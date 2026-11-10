@@ -42,12 +42,13 @@
 
 .idCell {
   position: relative;
+  padding-bottom: 24px !important;
 }
 
 .rowMenu {
   position: absolute;
-  left: -26px;
-  top: 4px;
+  right: 2px;
+  bottom: 2px;
   opacity: 0;
 }
 
@@ -160,4 +161,43 @@
 .table button {
   font-family: var(--mantine-font-family);
   font-size: var(--mantine-font-size-xs);
+}
+
+.blockHandle {
+  cursor: grab;
+  color: var(--mantine-color-gray-6);
+  display: flex;
+  align-items: center;
+}
+
+.rowGrip {
+  position: absolute;
+  left: 2px;
+  bottom: 4px;
+  cursor: grab;
+  color: var(--mantine-color-gray-6);
+  opacity: 0;
+}
+
+.table tr:hover .rowGrip {
+  opacity: 1;
+}
+
+.fieldGrip {
+  cursor: grab;
+  color: var(--mantine-color-gray-5);
+  margin-top: 6px;
+  opacity: 0;
+}
+
+.specItem:hover .fieldGrip {
+  opacity: 1;
+}
+
+.dropRow td {
+  box-shadow: inset 0 2px 0 var(--mantine-color-blue-6);
+}
+
+.dropField {
+  box-shadow: 0 -2px 0 var(--mantine-color-blue-6);
 }

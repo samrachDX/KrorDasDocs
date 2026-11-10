@@ -18,6 +18,7 @@ import {
   IconArrowDown,
   IconArrowUp,
   IconDots,
+  IconGripVertical,
   IconPhotoPlus,
   IconPlus,
   IconRowInsertBottom,
@@ -152,6 +153,70 @@ export default function UiSpecView(props: NodeViewProps) {
   const addSpec = (i: number) =>
     updateRow(i, { specs: [...rows[i].specs, { key: "", value: "" }] });
 
+  // Drag and drop to reorder rows, and spec fields (also into another row).
+  const [drag, setDrag] = useState<
+    { kind: "row"; row: number } | { kind: "field"; row: number; field: number } | null
+  >(null);
+  const [over, setOver] = useState<string | null>(null);
+  // The ref is what drop reads: dragend can arrive before drop re-renders.
+  const dragRef = useRef<typeof drag>(null);
+
+  const dropRow = (to: number) => {
+    const drag = dragRef.current;
+    if (drag?.kind !== "row" || drag.row === to) return;
+    const next = [...rows];
+    const [moved] = next.splice(drag.row, 1);
+    next.splice(to, 0, moved);
+    change(next, true);
+  };
+
+  // to === row.specs.length drops at the end of that row.
+  const dropField = (toRow: number, to: number) => {
+    const drag = dragRef.current;
+    if (drag?.kind !== "field") return;
+    const { row: fromRow, field: from } = drag;
+    if (fromRow === toRow && (from === to || from + 1 === to)) return;
+    const next = rows.map((r) => ({ ...r, specs: [...r.specs] }));
+    const [moved] = next[fromRow].specs.splice(from, 1);
+    const at = fromRow === toRow && from < to ? to - 1 : to;
+    next[toRow].specs.splice(at, 0, moved);
+    change(next, true);
+  };
+
+  const endDrag = () => {
+    setTimeout(() => {
+      dragRef.current = null;
+      setDrag(null);
+      setOver(null);
+    }, 0);
+  };
+
+  const dragProps = (key: string, onDrop: () => void, accepts: "row" | "field") => ({
+    onDragOver: (e: React.DragEvent) => {
+      if (dragRef.current?.kind !== accepts) return;
+      e.preventDefault();
+      e.stopPropagation();
+      e.dataTransfer.dropEffect = "move";
+      if (over !== key) setOver(key);
+    },
+    onDrop: (e: React.DragEvent) => {
+      if (dragRef.current?.kind !== accepts) return;
+      e.preventDefault();
+      e.stopPropagation();
+      onDrop();
+      dragRef.current = null;
+      endDrag();
+    },
+  });
+
+  const startDrag = (e: React.DragEvent, d: NonNullable<typeof drag>) => {
+    e.stopPropagation();
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("application/x-krordas-uispec", "");
+    dragRef.current = d;
+    setDrag(d);
+  };
+
   const pageId: string | undefined = (editor.storage as any)?.pageId;
 
   const upload = async (files: File[]): Promise<string[]> => {
@@ -241,11 +306,15 @@ export default function UiSpecView(props: NodeViewProps) {
   return (
     <NodeViewWrapper
       className={`${classes.wrapper} ${selected ? classes.selected : ""}`}
-      data-drag-handle
       contentEditable={false}
     >
       {editable && (
         <Group gap={6} mb={4} className={classes.noPrint}>
+          <Tooltip label="Drag to move the whole table">
+            <div className={classes.blockHandle} data-drag-handle draggable>
+              <IconGripVertical size={16} />
+            </div>
+          </Tooltip>
           <Select
             size="xs"
             w={180}
@@ -317,8 +386,23 @@ export default function UiSpecView(props: NodeViewProps) {
           </thead>
           <tbody>
             {rows.map((row, i) => (
-              <tr key={i}>
+              <tr
+                key={i}
+                className={over === `row-${i}` ? classes.dropRow : undefined}
+                {...dragProps(`row-${i}`, () => dropRow(i), "row")}
+              >
                 <td className={classes.idCell}>
+                  {editable && (
+                    <div
+                      className={`${classes.rowGrip} ${classes.noPrint}`}
+                      draggable
+                      onDragStart={(e) => startDrag(e, { kind: "row", row: i })}
+                      onDragEnd={endDrag}
+                      title="Drag to move this row"
+                    >
+                      <IconGripVertical size={14} />
+                    </div>
+                  )}
                   {editable && (
                     <Menu position="bottom-start" withinPortal>
                       <Menu.Target>
@@ -412,11 +496,27 @@ export default function UiSpecView(props: NodeViewProps) {
                   )}
                 </td>
                 <td>
-                  <ul className={classes.specList}>
+                  <ul
+                    className={`${classes.specList} ${over === `fields-${i}` ? classes.dropField : ""}`}
+                    {...dragProps(`fields-${i}`, () => dropField(i, row.specs.length), "field")}
+                  >
                     {row.specs.map((f, s) => (
-                      <li key={s} className={classes.specItem}>
+                      <li
+                        key={s}
+                        className={`${classes.specItem} ${over === `field-${i}-${s}` ? classes.dropField : ""}`}
+                        {...dragProps(`field-${i}-${s}`, () => dropField(i, s), "field")}
+                      >
                         {editable ? (
                           <Group gap={4} wrap="nowrap" align="flex-start">
+                            <div
+                              className={`${classes.fieldGrip} ${classes.noPrint}`}
+                              draggable
+                              onDragStart={(e) => startDrag(e, { kind: "field", row: i, field: s })}
+                              onDragEnd={endDrag}
+                              title="Drag to move this field"
+                            >
+                              <IconGripVertical size={12} />
+                            </div>
                             <Autocomplete
                               size="xs"
                               variant="unstyled"
