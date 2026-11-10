@@ -89,7 +89,6 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: desktop-dev
-          target_commitish: ${{ github.event.pull_request.head.sha || github.sha }}
           name: KrorDas Docs (latest test build)
           prerelease: true
           body: Latest test build of the KrorDas Docs desktop app. Files are replaced by every new build.
