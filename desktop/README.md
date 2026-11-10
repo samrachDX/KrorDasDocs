@@ -27,8 +27,9 @@ not in OneDrive: live database files must not be synced by OneDrive.
 ## Download
 
 Installers are built by GitHub Actions (`.github/workflows/desktop.yml`).
-Run the workflow manually, or push a tag like `desktop-v1.0.0` to publish a
-release with:
+Every build uploads them to the **desktop-dev** pre-release on the repo's
+Releases page. Push a tag like `desktop-v1.0.0` to publish a proper release
+with:
 
 - `KrorDas-Docs-Setup-<version>.exe` (Windows x64)
 - `KrorDas-Docs-<version>-arm64.dmg` (Apple Silicon Mac)

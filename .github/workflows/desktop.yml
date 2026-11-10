@@ -75,24 +75,28 @@ jobs:
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
 
-      - uses: actions/upload-artifact@v4
+      # Installers go to a GitHub release rather than workflow artifacts:
+      # release files do not count toward the Actions storage quota.
+      - name: Publish installer to the "desktop-dev" pre-release
+        if: ${{ !startsWith(github.ref, 'refs/tags/desktop-v') }}
+        uses: softprops/action-gh-release@v2
         with:
-          name: KrorDas-Docs-${{ matrix.name }}
-          path: |
+          tag_name: desktop-dev
+          target_commitish: ${{ github.event.pull_request.head.sha || github.sha }}
+          name: KrorDas Docs (latest test build)
+          prerelease: true
+          body: Latest test build of the KrorDas Docs desktop app. Files are replaced by every new build.
+          files: |
             desktop/release/*.exe
             desktop/release/*.dmg
-          if-no-files-found: error
+          fail_on_unmatched_files: true
 
-  release:
-    if: startsWith(github.ref, 'refs/tags/desktop-v')
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          path: dist
-          merge-multiple: true
-      - uses: softprops/action-gh-release@v2
+      - name: Publish installer to the release
+        if: startsWith(github.ref, 'refs/tags/desktop-v')
+        uses: softprops/action-gh-release@v2
         with:
           name: KrorDas Docs ${{ github.ref_name }}
-          files: dist/*
+          files: |
+            desktop/release/*.exe
+            desktop/release/*.dmg
+          fail_on_unmatched_files: true
