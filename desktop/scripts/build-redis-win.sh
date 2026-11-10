@@ -28,4 +28,11 @@ copy_deps() {
 copy_deps "$OUT/redis-server.exe"
 ls -la "$OUT"
 cp COPYING "$OUT/LICENSE-valkey.txt"
-"$OUT/redis-server.exe" --version
+echo "DLLs imported by redis-server.exe:"
+objdump -p "$OUT/redis-server.exe" | awk '/DLL Name/ {print "  " $3}'
+for dll in $(objdump -p "$OUT/redis-server.exe" | awk '/DLL Name/ {print $3}'); do
+  case "$dll" in msys-*) [ -f "$OUT/$dll" ] || { find /usr /mingw64 -name "$dll" 2>/dev/null | head -1 | xargs -r -I{} cp {} "$OUT/"; } ;; esac
+done
+ls -la "$OUT"
+# Smoke test without MSYS on PATH, like the app runs it.
+PATH=/c/Windows/System32:/c/Windows "$OUT/redis-server.exe" --version
