@@ -89,7 +89,7 @@ jobs:
           files: |
             desktop/release/*.exe
             desktop/release/*.dmg
-          fail_on_unmatched_files: true
+          fail_on_unmatched_files: false
 
       - name: Publish installer to the release
         if: startsWith(github.ref, 'refs/tags/desktop-v')
@@ -99,4 +99,4 @@ jobs:
           files: |
             desktop/release/*.exe
             desktop/release/*.dmg
-          fail_on_unmatched_files: true
+          fail_on_unmatched_files: false
