@@ -1,6 +1,6 @@
 // Builds desktop/resources from an already-built repo (`pnpm build`):
 //   resources/app   – server + client build with production node_modules
-//   resources/node  – the Node.js runtime the server runs on
+//   resources/editor.asar – the same, packed into one archive
 //   resources/redis – must be filled by scripts/fetch-redis.* beforehand
 import { execSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -96,13 +96,16 @@ prune(path.join(app, 'node_modules'));
 for (const f of ['pnpm-lock.yaml', 'pnpm-workspace.yaml']) fs.rmSync(path.join(app, f), { force: true });
 fs.mkdirSync(path.join(app, 'data'), { recursive: true });
 
-// Node.js runtime: the same binary that installed the native modules.
-const nodeDir = path.join(out, 'node');
-fs.rmSync(nodeDir, { recursive: true, force: true });
-fs.mkdirSync(nodeDir, { recursive: true });
-const nodeName = process.platform === 'win32' ? 'node.exe' : 'node';
-fs.copyFileSync(process.execPath, path.join(nodeDir, nodeName));
-fs.chmodSync(path.join(nodeDir, nodeName), 0o755);
+// Pack the editor into one archive: installing ~30,000 loose files is slow
+// on Windows (antivirus scans each one). Native modules stay unpacked.
+// The server runs on Electron's own Node.js, which reads .asar archives.
+console.log('Packing editor.asar…');
+const asar = await import('@electron/asar');
+const asarFile = path.join(out, 'editor.asar');
+fs.rmSync(asarFile, { force: true });
+fs.rmSync(`${asarFile}.unpacked`, { recursive: true, force: true });
+await asar.createPackageWithOptions(app, asarFile, { unpack: '*.{node,dll,so,dylib,exe}' });
+fs.rmSync(path.join(out, 'node'), { recursive: true, force: true });
 
 const redis = path.join(out, 'redis', process.platform === 'win32' ? 'redis-server.exe' : 'redis-server');
 if (!fs.existsSync(redis)) {

@@ -44,7 +44,7 @@ export class ShareSeoController {
       workspace = await this.workspaceRepo.findByHostname(subdomain);
     }
 
-    const clientDistPath = join(
+    const clientDistPath = process.env.CLIENT_DIST_PATH || join(
       __dirname,
       '..',
       '..',

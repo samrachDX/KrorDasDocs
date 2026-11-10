@@ -32,7 +32,7 @@ export class PublicSpaceSeoController {
   ) {
     const workspace = await this.resolveWorkspace(req);
 
-    const clientDistPath = join(
+    const clientDistPath = process.env.CLIENT_DIST_PATH || join(
       __dirname,
       '..',
       '..',
@@ -82,7 +82,7 @@ export class PublicSpaceSeoController {
   ) {
     const workspace = await this.resolveWorkspace(req);
 
-    const clientDistPath = join(
+    const clientDistPath = process.env.CLIENT_DIST_PATH || join(
       __dirname,
       '..',
       '..',

@@ -146,17 +146,55 @@ async function startRedis({ resourcesDir, dataDir, logDir }) {
   return { child, port, url: `redis://127.0.0.1:${port}` };
 }
 
+// The server rewrites the client's index.html at startup, so the client build
+// is copied out of the read-only editor.asar into the data folder whenever
+// the app is updated.
+function prepareClientDir(resourcesDir, dataDir) {
+  const asarPath = path.join(resourcesDir, 'editor.asar');
+  const src = path.join(asarPath, 'apps', 'client', 'dist');
+  const dest = path.join(dataDir, 'client');
+  let stamp;
+  try {
+    const st = require('original-fs').statSync(asarPath);
+    stamp = `${st.size}-${st.mtimeMs}`;
+  } catch {
+    stamp = String(Date.now());
+  }
+  const stampFile = path.join(dest, '.krordas-stamp');
+  try {
+    if (fs.readFileSync(stampFile, 'utf8') === stamp) return dest;
+  } catch {}
+  fs.rmSync(dest, { recursive: true, force: true });
+  const copy = (from, to) => {
+    fs.mkdirSync(to, { recursive: true });
+    for (const e of fs.readdirSync(from, { withFileTypes: true })) {
+      const a = path.join(from, e.name);
+      const b = path.join(to, e.name);
+      if (e.isDirectory()) copy(a, b);
+      else fs.writeFileSync(b, fs.readFileSync(a));
+    }
+  };
+  copy(src, dest);
+  fs.writeFileSync(stampFile, stamp);
+  return dest;
+}
+
 async function startServer({ resourcesDir, dataDir, logDir, dbUrl, redisUrl, secret }) {
   const port = await freePort(37210);
   const appUrl = `http://127.0.0.1:${port}`;
-  const nodeExe = process.platform === 'win32' ? 'node.exe' : 'node';
-  const nodeBin = path.join(resourcesDir, 'node', nodeExe);
-  const serverDir = path.join(resourcesDir, 'editor', 'apps', 'server');
+  // The server runs on Electron's own Node.js runtime, which can load the
+  // packed editor.asar directly.
+  const serverMain = path.join(resourcesDir, 'editor.asar', 'apps', 'server', 'dist', 'main.js');
+  const clientDir = prepareClientDir(resourcesDir, dataDir);
+  const workDir = path.join(dataDir, 'server');
+  fs.mkdirSync(workDir, { recursive: true });
   const storageDir = path.join(dataDir, 'storage');
   fs.mkdirSync(storageDir, { recursive: true });
 
   const env = {
     ...process.env,
+    ELECTRON_RUN_AS_NODE: '1',
+    CLIENT_DIST_PATH: clientDir,
     NODE_ENV: 'production',
     APP_URL: appUrl,
     PORT: String(port),
@@ -175,8 +213,8 @@ async function startServer({ resourcesDir, dataDir, logDir, dbUrl, redisUrl, sec
     DISABLE_TELEMETRY: 'true',
   };
 
-  const child = spawn(nodeBin, ['dist/main'], {
-    cwd: serverDir,
+  const child = spawn(process.execPath, [serverMain], {
+    cwd: workDir,
     env,
     windowsHide: true,
   });
