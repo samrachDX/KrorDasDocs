@@ -8,6 +8,8 @@ HERE="$(cd "$(dirname "$0")/.." && pwd)"
 WORK="$(mktemp -d)"
 curl -fsSL "https://github.com/valkey-io/valkey/archive/refs/tags/${VERSION}.tar.gz" | tar -xz -C "$WORK"
 cd "$WORK/valkey-${VERSION}"
+# hiredis builds with -Werror; newer Cygwin GCC flags a harmless char-subscripts warning in sds.c.
+sed -i 's/-Werror//g' deps/hiredis/Makefile
 make -j"$(nproc)" BUILD_TLS=no MALLOC=libc CFLAGS="-D_GNU_SOURCE" valkey-server
 OUT="$HERE/resources/redis"
 mkdir -p "$OUT"
