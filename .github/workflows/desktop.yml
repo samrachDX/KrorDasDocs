@@ -61,6 +61,13 @@ jobs:
         shell: msys2 {0}
         run: desktop/scripts/build-redis-win.sh
 
+      - name: Check cache server runs (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          & desktop\resources\redis\redis-server.exe --version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Install desktop dependencies
         working-directory: desktop
         run: npm ci

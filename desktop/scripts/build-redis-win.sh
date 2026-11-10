@@ -34,5 +34,5 @@ for dll in $(objdump -p "$OUT/redis-server.exe" | awk '/DLL Name/ {print $3}'); 
   case "$dll" in msys-*) [ -f "$OUT/$dll" ] || { find /usr /mingw64 -name "$dll" 2>/dev/null | head -1 | xargs -r -I{} cp {} "$OUT/"; } ;; esac
 done
 ls -la "$OUT"
-# Smoke test without MSYS on PATH, like the app runs it.
-PATH=/c/Windows/System32:/c/Windows "$OUT/redis-server.exe" --version
+# The smoke test runs in a separate PowerShell step: starting a second copy of
+# msys-2.0.dll from inside an MSYS shell fails, but the app starts it from Node.
