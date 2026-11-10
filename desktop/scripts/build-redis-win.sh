@@ -14,8 +14,18 @@ make -j"$(nproc)" BUILD_TLS=no MALLOC=libc CFLAGS="-D_GNU_SOURCE" valkey-server
 OUT="$HERE/resources/redis"
 mkdir -p "$OUT"
 cp src/valkey-server.exe "$OUT/redis-server.exe"
-for dll in $(ldd src/valkey-server.exe | awk '/\/usr\/bin\// {print $3}'); do
-  cp "$dll" "$OUT/"
-done
+# Copy the MSYS runtime DLLs the server needs (recursively), using objdump
+# because ldd is not available in every MSYS2 install.
+copy_deps() {
+  local f="$1" dll
+  for dll in $(objdump -p "$f" | awk '/DLL Name/ {print $3}'); do
+    if [ -f "/usr/bin/$dll" ] && [ ! -f "$OUT/$dll" ]; then
+      cp "/usr/bin/$dll" "$OUT/"
+      copy_deps "/usr/bin/$dll"
+    fi
+  done
+}
+copy_deps "$OUT/redis-server.exe"
+ls -la "$OUT"
 cp COPYING "$OUT/LICENSE-valkey.txt"
 "$OUT/redis-server.exe" --version
