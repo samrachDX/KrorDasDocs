@@ -103,17 +103,27 @@
   white-space: pre-wrap;
 }
 
+.noPrint {
+}
+
 .link {
   word-break: break-all;
 }
 
 @media print {
-  .rowMenu {
-    display: none;
+  .rowMenu,
+  .noPrint {
+    display: none !important;
   }
   .table th {
     background: #1f3864 !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
+  }
+}
+
+@media print {
+  .title::placeholder {
+    color: transparent;
   }
 }

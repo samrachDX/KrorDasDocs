@@ -255,7 +255,7 @@ export default function UiSpecView(props: NodeViewProps) {
                               onChange={(v) => updateSpec(i, s, { key: v })}
                               classNames={{ input: classes.keyInput }}
                               comboboxProps={{ withinPortal: true }}
-                              w={118}
+                              w={100}
                             />
                             <span className={classes.colon}>:</span>
                             {colorOf(f.value) && (
@@ -279,6 +279,7 @@ export default function UiSpecView(props: NodeViewProps) {
                               variant="subtle"
                               color="gray"
                               mt={4}
+                              className={classes.noPrint}
                               onClick={() => removeSpec(i, s)}
                               aria-label="Remove field"
                             >
@@ -299,6 +300,7 @@ export default function UiSpecView(props: NodeViewProps) {
                   </ul>
                   {editable && (
                     <Button
+                      className={classes.noPrint}
                       size="compact-xs"
                       variant="subtle"
                       leftSection={<IconPlus size={12} />}
@@ -316,6 +318,7 @@ export default function UiSpecView(props: NodeViewProps) {
       {editable && (
         <Tooltip label="Add a row with the next ID">
           <Button
+            className={classes.noPrint}
             mt={6}
             size="compact-sm"
             variant="light"

@@ -1,0 +1,90 @@
+{
+  "name": "krordas-docs-desktop",
+  "productName": "KrorDas Docs",
+  "version": "1.0.0",
+  "description": "KrorDas Docs \u2013 technical documentation and UI spec editor",
+  "author": "SamrachDX",
+  "license": "AGPL-3.0",
+  "private": true,
+  "main": "src/main.js",
+  "scripts": {
+    "prepare-resources": "node scripts/prepare-resources.mjs",
+    "start": "electron .",
+    "dist": "electron-builder --publish never",
+    "dist:win": "electron-builder --win --publish never",
+    "dist:mac": "electron-builder --mac --publish never"
+  },
+  "dependencies": {
+    "embedded-postgres": "18.6.0-beta.19"
+  },
+  "devDependencies": {
+    "electron": "44.10.1",
+    "electron-builder": "26.18.0"
+  },
+  "build": {
+    "appId": "com.samrachdx.krordasdocs",
+    "productName": "KrorDas Docs",
+    "copyright": "KrorDas Docs \u00b7 Editor by SamrachDX",
+    "asar": false,
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "src/**/*",
+      "build/icon.png",
+      "package.json",
+      "node_modules/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "resources/app",
+        "to": "app"
+      },
+      {
+        "from": "resources/node",
+        "to": "node"
+      },
+      {
+        "from": "resources/redis",
+        "to": "redis"
+      },
+      {
+        "from": "../LICENSE",
+        "to": "LICENSE.txt"
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "KrorDas Docs",
+      "artifactName": "KrorDas-Docs-Setup-${version}.${ext}"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg"
+        }
+      ],
+      "category": "public.app-category.productivity",
+      "icon": "build/icon.png",
+      "artifactName": "KrorDas-Docs-${version}-${arch}.${ext}",
+      "identity": "-",
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false
+    }
+  }
+}
