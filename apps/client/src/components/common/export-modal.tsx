@@ -18,8 +18,6 @@ import { ExportFormat } from "@/features/page/types/page.types.ts";
 import { notifications } from "@mantine/notifications";
 import { exportSpace } from "@/features/space/services/space-service";
 import { useTranslation } from "react-i18next";
-import { Feature } from "@/ee/features";
-import { useHasFeature } from "@/ee/hooks/use-feature";
 import { useUpgradeLabel } from "@/ee/hooks/use-upgrade-label";
 
 interface ExportModalProps {
@@ -42,7 +40,7 @@ export default function ExportModal({
   const { t } = useTranslation();
   const upgradeLabel = useUpgradeLabel();
   const isDocx = format === ExportFormat.Docx;
-  const docxEntitled = useHasFeature(Feature.DOCX_EXPORT);
+  const docxEntitled = true; // open-source Word export
   const blockedByLicense = isDocx && !docxEntitled;
 
   const handleExport = async () => {
