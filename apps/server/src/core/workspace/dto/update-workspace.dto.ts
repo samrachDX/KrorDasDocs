@@ -1,0 +1,98 @@
+import { PartialType } from '@nestjs/mapped-types';
+import { CreateWorkspaceDto } from './create-workspace.dto';
+import {
+  IsArray,
+  IsBoolean,
+  IsIn,
+  IsInt,
+  IsOptional,
+  IsString,
+  Min,
+} from 'class-validator';
+import { SUPPORTED_LOCALES } from '../workspace.constants';
+
+export class UpdateWorkspaceDto extends PartialType(CreateWorkspaceDto) {
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  emailDomains: string[];
+
+  @IsOptional()
+  @IsBoolean()
+  enforceSso: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  enforceMfa: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  restrictApiToAdmins: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  aiSearch: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  generativeAi: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  disablePublicSharing: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  allowPublicSpaces: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  publicSpacesDirectory: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  mcpEnabled: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  isScimEnabled: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  aiChat: boolean;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  trashRetentionDays: number;
+
+  @IsOptional()
+  @IsBoolean()
+  allowMemberTemplates: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  allowPersonalSpaces: boolean;
+
+  @IsOptional()
+  @IsString()
+  @IsIn(['read', 'edit'])
+  defaultPageEditMode: string;
+
+  @IsOptional()
+  @IsString()
+  @IsIn(SUPPORTED_LOCALES)
+  defaultLocale: string;
+
+  @IsOptional()
+  @IsBoolean()
+  aiChatReadOnly: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  aiChatWorkspaceKnowledgeOnly: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  enforceMcpOauth: boolean;
+}

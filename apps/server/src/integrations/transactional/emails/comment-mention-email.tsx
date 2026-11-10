@@ -1,0 +1,31 @@
+import { Section, Text } from '../components';
+import * as React from 'react';
+import { content, paragraph } from '../css/styles';
+import { EmailButton, MailBody } from '../partials/partials';
+
+interface Props {
+  actorName: string;
+  pageTitle: string;
+  commentUrl: string;
+}
+
+export const CommentMentionEmail = ({
+  actorName,
+  pageTitle,
+  commentUrl,
+}: Props) => {
+  return (
+    <MailBody>
+      <Section style={content}>
+        <Text style={paragraph}>Hi there,</Text>
+        <Text style={paragraph}>
+          <strong>{actorName}</strong> mentioned you in a comment on{' '}
+          <strong>{pageTitle}</strong>.
+        </Text>
+      </Section>
+      <EmailButton href={commentUrl}>View</EmailButton>
+    </MailBody>
+  );
+};
+
+export default CommentMentionEmail;
