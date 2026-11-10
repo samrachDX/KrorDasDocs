@@ -28,6 +28,7 @@ import {
   isEditorReady,
   isTextSelected,
 } from "@docmost/editor-ext";
+import { FontSelector } from "@/features/editor/components/bubble-menu/font-selector";
 import { LinkSelector } from "@/features/editor/components/bubble-menu/link-selector.tsx";
 import { useTranslation } from "react-i18next";
 import {
@@ -60,7 +61,7 @@ export const EditorBubbleMenu: FC<EditorBubbleMenuProps> = (props) => {
   const isGenerativeAiEnabled = workspace?.settings?.ai?.generative === true;
   const user = useAtomValue(userAtom);
   const editorToolbarEnabled =
-    user?.settings?.preferences?.editorToolbar ?? false;
+    user?.settings?.preferences?.editorToolbar ?? true;
   const [, setDraftCommentId] = useAtom(draftCommentIdAtom);
   const showCommentPopupRef = useRef(showCommentPopup);
   const showAiMenuRef = useRef(showAiMenu);
@@ -250,6 +251,8 @@ export const EditorBubbleMenu: FC<EditorBubbleMenuProps> = (props) => {
                 </Tooltip>
               ))}
             </ActionIcon.Group>
+
+            <FontSelector editor={props.editor} compact />
 
             <ColorSelector
               editor={props.editor}

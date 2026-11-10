@@ -4,7 +4,11 @@ import { TextAlign } from '@tiptap/extension-text-align';
 import { Superscript } from '@tiptap/extension-superscript';
 import SubScript from '@tiptap/extension-subscript';
 import { Typography } from '@tiptap/extension-typography';
-import { TextStyle } from '@tiptap/extension-text-style';
+import {
+  TextStyle,
+  FontFamily,
+  FontSize,
+} from '@tiptap/extension-text-style';
 import { Color } from '@tiptap/extension-color';
 import { Youtube } from '@tiptap/extension-youtube';
 import { TaskList, TaskItem } from '@tiptap/extension-list';
@@ -104,6 +108,8 @@ export const tiptapExtensions = [
   TrailingNode,
   TextStyle,
   Color,
+  FontFamily,
+  FontSize,
   MathInline,
   MathBlock,
   Details,

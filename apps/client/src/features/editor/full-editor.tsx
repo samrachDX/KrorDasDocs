@@ -81,7 +81,7 @@ export function FullEditor({
   const { data: space } = useGetSpaceBySlugQuery(spaceSlug);
   const fullPageWidth = user?.settings?.preferences?.fullPageWidth;
   const editorToolbarEnabled =
-    user?.settings?.preferences?.editorToolbar ?? false;
+    user?.settings?.preferences?.editorToolbar ?? true;
   const setCurrentPageEditMode = useSetAtom(currentPageEditModeAtom);
   const userPageEditMode =
     user?.settings?.preferences?.pageEditMode ?? PageEditMode.Edit;

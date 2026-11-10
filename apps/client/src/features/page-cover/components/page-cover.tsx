@@ -70,7 +70,7 @@ function PageCoverBand({ page, cover, editable }: PageCoverBandProps) {
   const fullPageWidth = user?.settings?.preferences?.fullPageWidth;
   const editMode = useAtomValue(currentPageEditModeAtom);
   const canEdit = editable && editMode === PageEditMode.Edit;
-  const belowToolbar = canEdit && user?.settings?.preferences?.editorToolbar;
+  const belowToolbar = canEdit && (user?.settings?.preferences?.editorToolbar ?? true);
   const { updateCover } = usePageCover(page);
   const [focusRequest, setFocusRequest] = useAtom(coverFocusRequestAtom);
 

@@ -362,7 +362,16 @@ export const defaultMarks: MarkSerializer = {
   // @tiptap/extension-color stores the color on the textStyle mark.
   textStyle(_state, _node, mark) {
     const color = toDocxColor(mark.attrs?.color);
-    return color ? { color } : {};
+    const out: Record<string, unknown> = color ? { color } : {};
+    // fontSize is stored as "16px"; docx sizes are half-points (px * 0.75 * 2).
+    const px = parseFloat(String(mark.attrs?.fontSize ?? ''));
+    if (px > 0) out.size = Math.round(px * 1.5);
+    const family = String(mark.attrs?.fontFamily ?? '')
+      .split(',')[0]
+      .replace(/['"]/g, '')
+      .trim();
+    if (family) out.font = family;
+    return out;
   },
   // Comments are editor-only; drop the annotation in the export.
   comment() {
