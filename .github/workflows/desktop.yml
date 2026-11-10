@@ -76,6 +76,10 @@ jobs:
         working-directory: desktop
         run: node scripts/prepare-resources.mjs
 
+      - name: Bundle KuFlow diagram editor
+        working-directory: desktop
+        run: node scripts/prepare-kuflow.mjs
+
       - name: Build installer
         working-directory: desktop
         run: npx electron-builder --publish never

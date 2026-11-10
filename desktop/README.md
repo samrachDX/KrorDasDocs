@@ -46,10 +46,14 @@ pnpm install && pnpm build                 # from the repo root
 desktop/scripts/build-redis-mac.sh         # macOS (Windows: build-redis-win.sh in MSYS2)
 cd desktop && npm ci
 node scripts/prepare-resources.mjs
+node scripts/prepare-kuflow.mjs           # KuFlow diagram editor (draw.io webapp), served offline
 npx electron-builder --publish never       # installers land in desktop/release
 ```
 
 ## License
+
+The bundled KuFlow diagram editor is the draw.io webapp (Apache-2.0, Copyright JGraph Ltd and draw.io AG; its licence is shipped as LICENSE-drawio.txt inside kuflow.asar) with KuFlow's customisation from github.com/samrachDX/kuflow.
+
 
 KrorDas Docs is based on open-source software licensed under the GNU AGPL v3
 (see `LICENSE`). If you distribute the app or let others use it over a

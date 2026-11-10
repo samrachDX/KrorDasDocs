@@ -470,7 +470,7 @@ const TEMPLATE_EXCLUDED_SLASH_ITEMS = new Set([
   "Image",
   "Video",
   "File attachment",
-  "Draw.io (diagrams.net)",
+  "KuFlow diagram",
   "Excalidraw (Whiteboard)",
   "Audio",
   "Synced block",

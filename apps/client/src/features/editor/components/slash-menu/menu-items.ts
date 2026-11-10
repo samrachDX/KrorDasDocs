@@ -501,9 +501,9 @@ const CommandGroups: SlashMenuGroupedItemsType = {
           .run(),
     },
     {
-      title: "Draw.io (diagrams.net)",
-      description: "Insert and design Drawio diagrams",
-      searchTerms: ["drawio", "diagrams", "charts", "uml", "whiteboard"],
+      title: "KuFlow diagram",
+      description: "Flowcharts, UML and other diagrams (works offline)",
+      searchTerms: ["kuflow", "flowchart", "drawio", "diagrams", "charts", "uml", "whiteboard"],
       icon: IconDrawio,
       command: ({ editor, range }: CommandProps) =>
         editor.chain().focus().deleteRange(range).setDrawio().run(),

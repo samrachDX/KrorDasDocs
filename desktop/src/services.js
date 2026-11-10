@@ -179,7 +179,7 @@ function prepareClientDir(resourcesDir, dataDir) {
   return dest;
 }
 
-async function startServer({ resourcesDir, dataDir, logDir, dbUrl, redisUrl, secret }) {
+async function startServer({ resourcesDir, dataDir, logDir, dbUrl, redisUrl, secret, drawioUrl }) {
   const port = await freePort(37210);
   const appUrl = `http://127.0.0.1:${port}`;
   // The server runs on Electron's own Node.js runtime, which can load the
@@ -211,6 +211,7 @@ async function startServer({ resourcesDir, dataDir, logDir, dbUrl, redisUrl, sec
     SMTP_HOST: '127.0.0.1',
     SMTP_PORT: '2525',
     DISABLE_TELEMETRY: 'true',
+    ...(drawioUrl ? { DRAWIO_URL: drawioUrl } : {}),
   };
 
   const child = spawn(process.execPath, [serverMain], {
@@ -225,4 +226,4 @@ async function startServer({ resourcesDir, dataDir, logDir, dbUrl, redisUrl, sec
   return { child, port, appUrl };
 }
 
-module.exports = { startPostgres, startRedis, startServer };
+module.exports = { freePort, startPostgres, startRedis, startServer };

@@ -20,4 +20,12 @@ exports.default = async function afterPack(context) {
     fs.cpSync(`${src}.unpacked`, `${dest}.unpacked`, { recursive: true });
   }
   console.log(`  • copied bundled editor to ${dest}`);
+
+  // KuFlow diagram editor (scripts/prepare-kuflow.mjs), served locally.
+  const kuflow = path.join(__dirname, '..', 'resources', 'kuflow.asar');
+  if (!fs.existsSync(kuflow)) {
+    throw new Error(`${kuflow} is missing. Run "node scripts/prepare-kuflow.mjs" first.`);
+  }
+  fs.copyFileSync(kuflow, path.join(resourcesDir, 'kuflow.asar'));
+  console.log('  • copied KuFlow diagram editor');
 };

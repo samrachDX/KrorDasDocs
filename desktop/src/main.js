@@ -11,7 +11,8 @@ const crypto = require('crypto');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { startPostgres, startRedis, startServer } = require('./services');
+const { freePort, startPostgres, startRedis, startServer } = require('./services');
+const { startKuflowServer } = require('./kuflow-server');
 const { FolderSync } = require('./sync');
 
 const APP_NAME = 'KrorDas Docs';
@@ -357,6 +358,25 @@ function recordChildren() {
   fs.writeFileSync(pidFile, JSON.stringify(pids));
 }
 
+// The KuFlow diagram editor is bundled and served locally. Without it (a dev
+// run that skipped prepare-kuflow), diagrams fall back to the online editor.
+async function startKuflow() {
+  const root = path.join(resourcesDir, 'kuflow.asar');
+  if (!fs.existsSync(root)) {
+    log('kuflow.asar not found; diagrams use the online editor');
+    return null;
+  }
+  try {
+    const port = await freePort(37280);
+    services.kuflow = await startKuflowServer({ root, port });
+    log(`KuFlow editor at ${services.kuflow.url}`);
+    return `${services.kuflow.url}/`;
+  } catch (err) {
+    log(`KuFlow editor failed to start: ${err.stack || err}`);
+    return null;
+  }
+}
+
 async function boot() {
   config = loadConfig();
   killStaleChildren();
@@ -369,6 +389,7 @@ async function boot() {
     splashStatus('Starting cache…');
     services.redis = await startRedis({ resourcesDir, dataDir, logDir });
     splashStatus('Starting editor…');
+    const drawioUrl = await startKuflow();
     services.server = await startServer({
       resourcesDir,
       dataDir,
@@ -376,6 +397,7 @@ async function boot() {
       dbUrl: services.pg.url,
       redisUrl: services.redis.url,
       secret: config.appSecret,
+      drawioUrl,
     });
     recordChildren();
     splashStatus('Signing in…');
