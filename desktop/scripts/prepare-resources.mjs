@@ -11,7 +11,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const desktop = path.resolve(here, '..');
 const repo = path.resolve(desktop, '..');
 const out = path.join(desktop, 'resources');
-const app = path.join(out, 'app');
+const app = path.join(out, 'editor');
 
 const copy = (rel) => {
   const src = path.join(repo, rel);

@@ -38,16 +38,18 @@
     ],
     "extraResources": [
       {
-        "from": "resources/app",
-        "to": "app"
-      },
-      {
         "from": "resources/node",
-        "to": "node"
+        "to": "node",
+        "filter": [
+          "**/*"
+        ]
       },
       {
         "from": "resources/redis",
-        "to": "redis"
+        "to": "redis",
+        "filter": [
+          "**/*"
+        ]
       },
       {
         "from": "../LICENSE",
@@ -85,6 +87,7 @@
       "identity": "-",
       "hardenedRuntime": false,
       "gatekeeperAssess": false
-    }
+    },
+    "afterPack": "scripts/after-pack.cjs"
   }
 }

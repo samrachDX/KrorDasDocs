@@ -151,7 +151,7 @@ async function startServer({ resourcesDir, dataDir, logDir, dbUrl, redisUrl, sec
   const appUrl = `http://127.0.0.1:${port}`;
   const nodeExe = process.platform === 'win32' ? 'node.exe' : 'node';
   const nodeBin = path.join(resourcesDir, 'node', nodeExe);
-  const serverDir = path.join(resourcesDir, 'app', 'apps', 'server');
+  const serverDir = path.join(resourcesDir, 'editor', 'apps', 'server');
   const storageDir = path.join(dataDir, 'storage');
   fs.mkdirSync(storageDir, { recursive: true });
 
