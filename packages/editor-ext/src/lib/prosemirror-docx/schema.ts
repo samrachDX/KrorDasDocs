@@ -1,5 +1,6 @@
 import {
   ExternalHyperlink,
+  ImageRun,
   FootnoteReferenceRun,
   HeadingLevel,
   Paragraph,
@@ -15,6 +16,7 @@ import {
   UI_SPEC_COLUMNS,
 } from '../ui-spec/ui-spec-utils';
 import { Node } from 'prosemirror-model';
+import { imageDimensionsFromData } from 'image-dimensions';
 import { sanitizeIntegrationUrl } from '../integration-link/integration-link';
 import {
   DocxSerializerAsync,
@@ -29,13 +31,59 @@ import { CELL_MARGIN, TEXT_WIDTH, writeDocx } from './utils';
 const UI_SPEC_COL_RATIOS = [0.08, 0.14, 0.24, 0.2, 0.34];
 const UI_SPEC_HEADER_FILL = '1F3864';
 
-const renderUiSpec: NodeSerializerAsync[string] = (state, node) => {
+const renderUiSpec: NodeSerializerAsync[string] = async (state, node) => {
   const rows = normalizeUiSpecRows(node.attrs?.rows);
   const widths = UI_SPEC_COL_RATIOS.map((r) => Math.floor(TEXT_WIDTH * r));
+  // Table-wide font: "16px" -> 24 half-points; first family in the CSS list.
+  const px = parseFloat(String(node.attrs?.fontSize ?? ''));
+  const size = px > 0 ? Math.round(px * 1.5) : undefined;
+  const font =
+    String(node.attrs?.fontFamily ?? '')
+      .split(',')[0]
+      .replace(/['"]/g, '')
+      .trim() || undefined;
+  const run = (opts: { text: string; bold?: boolean; color?: string }) =>
+    new TextRun({ ...opts, size, font });
   const lines = (text: string) =>
     (text || '')
       .split('\n')
-      .map((t) => new Paragraph({ children: [new TextRun(t)] }));
+      .map((t) => new Paragraph({ children: [run({ text: t })] }));
+  // Pictures in the Displayed Content column, scaled to the column width.
+  const images = async (srcs: string[], maxWidthPx: number) => {
+    const out: Paragraph[] = [];
+    for (const src of srcs) {
+      try {
+        const data = await Promise.resolve(
+          (state as any).options.getImageBuffer(src),
+        );
+        const dim = imageDimensionsFromData(data);
+        if (!dim) continue;
+        const width = Math.min(maxWidthPx, dim.width);
+        const ext = src.split('?')[0].replace(/.*\./, '').toLowerCase();
+        out.push(
+          new Paragraph({
+            children: [
+              new ImageRun({
+                data,
+                type: (['png', 'jpg', 'gif', 'bmp'].includes(ext)
+                  ? ext
+                  : ext === 'jpeg'
+                    ? 'jpg'
+                    : 'png') as any,
+                transformation: {
+                  width,
+                  height: Math.round((width * dim.height) / dim.width),
+                },
+              }),
+            ],
+          }),
+        );
+      } catch {
+        // Missing or external image: leave it out of the export.
+      }
+    }
+    return out;
+  };
   const cell = (children: Paragraph[], i: number, header = false) =>
     new TableCell({
       width: { size: widths[i], type: WidthType.DXA },
@@ -44,47 +92,57 @@ const renderUiSpec: NodeSerializerAsync[string] = (state, node) => {
         : undefined,
       children: children.length ? children : [new Paragraph('')],
     });
+  // DXA (1/1440 in) -> px at 96 dpi, minus the cell margins.
+  const contentWidthPx = Math.max(
+    40,
+    Math.floor(((widths[3] - 2 * CELL_MARGIN) / 1440) * 96),
+  );
 
   const headerRow = new TableRow({
     tableHeader: true,
     children: UI_SPEC_COLUMNS.map((c, i) =>
       cell(
-        [new Paragraph({ children: [new TextRun({ text: c, bold: true, color: 'FFFFFF' })] })],
+        [new Paragraph({ children: [run({ text: c, bold: true, color: 'FFFFFF' })] })],
         i,
         true,
       ),
     ),
   });
 
-  const bodyRows = rows.map(
-    (r) =>
+  const bodyRows: TableRow[] = [];
+  for (const r of rows) {
+    bodyRows.push(
       new TableRow({
         children: [
           cell(lines(r.id), 0),
           cell(lines(r.item), 1),
           cell(lines(r.description), 2),
-          cell(lines(r.content), 3),
+          cell(
+            [
+              ...(r.content ? lines(r.content) : []),
+              ...(await images(r.images, contentWidthPx)),
+            ],
+            3,
+          ),
           cell(
             r.specs.map(
               (s) =>
                 new Paragraph({
                   children: s.key
-                    ? [
-                        new TextRun({ text: `- ${s.key}: `, bold: true }),
-                        new TextRun(s.value),
-                      ]
-                    : [new TextRun(`- ${s.value}`)],
+                    ? [run({ text: `- ${s.key}: `, bold: true }), run({ text: s.value })]
+                    : [run({ text: `- ${s.value}` })],
                 }),
             ),
             4,
           ),
         ],
       }),
-  );
+    );
+  }
 
   if (node.attrs?.title) {
     state.children.push(
-      new Paragraph({ children: [new TextRun({ text: node.attrs.title, bold: true })] }),
+      new Paragraph({ children: [run({ text: node.attrs.title, bold: true })] }),
     );
   }
   state.children.push(

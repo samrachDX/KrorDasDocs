@@ -8,6 +8,8 @@ export interface UiSpecRow {
   item: string;
   description: string;
   content: string;
+  // Pictures shown under the Displayed Content / Context text.
+  images: string[];
   specs: UiSpecField[];
 }
 
@@ -69,6 +71,7 @@ export function emptyUiSpecRow(id = ''): UiSpecRow {
     item: '',
     description: '',
     content: '',
+    images: [],
     specs: [
       { key: 'Format', value: '' },
       { key: 'Position', value: '' },
@@ -99,6 +102,9 @@ export function normalizeUiSpecRows(value: unknown): UiSpecRow[] {
     item: String(r?.item ?? ''),
     description: String(r?.description ?? ''),
     content: String(r?.content ?? ''),
+    images: Array.isArray(r?.images)
+      ? r.images.map((x: any) => String(x ?? '')).filter(Boolean)
+      : [],
     specs: Array.isArray(r?.specs)
       ? r.specs.map((s: any) => ({
           key: String(s?.key ?? ''),
@@ -194,6 +200,11 @@ export function rowsFromTableElement(table: Element): UiSpecRow[] | null {
       item: cellText(c[1]),
       description: cellText(c[2]),
       content: cellText(c[3]),
+      images: c[3]
+        ? Array.from(c[3].querySelectorAll('img'))
+            .map((img) => img.getAttribute('src') || '')
+            .filter(Boolean)
+        : [],
       specs: c[4] ? parseSpecLines(cellLines(c[4])) : [],
     };
   });

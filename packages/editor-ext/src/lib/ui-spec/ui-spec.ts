@@ -17,6 +17,8 @@ export interface UiSpecOptions {
 export interface UiSpecAttributes {
   title?: string;
   rows?: UiSpecRow[];
+  fontFamily?: string;
+  fontSize?: string;
 }
 
 declare module '@tiptap/core' {
@@ -26,6 +28,19 @@ declare module '@tiptap/core' {
       insertUiSpecScreen: (screenName?: string) => ReturnType;
     };
   }
+}
+
+const SAFE_CSS = /^[\w\s,'"\-.]*$/;
+
+export function uiSpecTableStyle(attrs: Record<string, any>): string {
+  const parts: string[] = [];
+  if (attrs.fontFamily && SAFE_CSS.test(attrs.fontFamily)) {
+    parts.push(`font-family: ${attrs.fontFamily}`);
+  }
+  if (attrs.fontSize && /^\d+(\.\d+)?px$/.test(attrs.fontSize)) {
+    parts.push(`font-size: ${attrs.fontSize}`);
+  }
+  return parts.join('; ');
 }
 
 export const UiSpec = Node.create<UiSpecOptions>({
@@ -68,6 +83,19 @@ export const UiSpec = Node.create<UiSpecOptions>({
           'data-rows': JSON.stringify(normalizeUiSpecRows(attrs.rows)),
         }),
       },
+      // Font for the whole table (CSS font-family list and e.g. "14px").
+      fontFamily: {
+        default: '',
+        parseHTML: (el: HTMLElement) => el.getAttribute('data-font-family') ?? '',
+        renderHTML: (attrs) =>
+          attrs.fontFamily ? { 'data-font-family': attrs.fontFamily } : {},
+      },
+      fontSize: {
+        default: '',
+        parseHTML: (el: HTMLElement) => el.getAttribute('data-font-size') ?? '',
+        renderHTML: (attrs) =>
+          attrs.fontSize ? { 'data-font-size': attrs.fontSize } : {},
+      },
     };
   },
 
@@ -100,7 +128,12 @@ export const UiSpec = Node.create<UiSpecOptions>({
       ['td', {}, ['p', {}, r.id]],
       ['td', {}, ['p', {}, r.item]],
       ['td', {}, ...lines(r.description)],
-      ['td', {}, ...lines(r.content)],
+      [
+        'td',
+        {},
+        ...lines(r.content),
+        ...r.images.map((src) => ['p', {}, ['img', { src, alt: '' }]]),
+      ],
       [
         'td',
         {},
@@ -119,7 +152,11 @@ export const UiSpec = Node.create<UiSpecOptions>({
       ...(node.attrs.title
         ? [['p', {}, ['strong', {}, node.attrs.title]]]
         : []),
-      ['table', {}, ['tbody', {}, header, ...body]],
+      [
+        'table',
+        uiSpecTableStyle(node.attrs) ? { style: uiSpecTableStyle(node.attrs) } : {},
+        ['tbody', {}, header, ...body],
+      ],
     ] as any;
   },
 

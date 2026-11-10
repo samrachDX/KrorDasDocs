@@ -8,6 +8,7 @@ import {
   Group,
   Image,
   Menu,
+  Select,
   Textarea,
   TextInput,
   Tooltip,
@@ -17,6 +18,7 @@ import {
   IconArrowDown,
   IconArrowUp,
   IconDots,
+  IconPhotoPlus,
   IconPlus,
   IconRowInsertBottom,
   IconTrash,
@@ -30,7 +32,15 @@ import {
   UI_SPEC_KEYS,
   UiSpecRow,
   URL_SPEC_KEYS,
+  uiSpecTableStyle,
 } from "@docmost/editor-ext";
+import { notifications } from "@mantine/notifications";
+import { getFileUrl } from "@/lib/config.ts";
+import { uploadFile } from "@/features/page/services/page-service.ts";
+import {
+  FONT_FAMILIES,
+  FONT_SIZES,
+} from "@/features/editor/components/bubble-menu/font-selector";
 import classes from "./ui-spec.module.css";
 
 const CSS_COLOR = /^(#[0-9a-f]{3,8}|rgba?\([^)]*\)|hsla?\([^)]*\))$/i;
@@ -38,6 +48,18 @@ const CSS_COLOR = /^(#[0-9a-f]{3,8}|rgba?\([^)]*\)|hsla?\([^)]*\))$/i;
 function colorOf(value: string): string | null {
   const v = value.trim().split(/\s+/)[0] ?? "";
   return CSS_COLOR.test(v) ? v : null;
+}
+
+// Opens the file picker and returns the chosen images.
+function pickImages(multiple = true): Promise<File[]> {
+  return new Promise((resolve) => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
+    input.multiple = multiple;
+    input.onchange = () => resolve(Array.from(input.files ?? []));
+    input.click();
+  });
 }
 
 function isUrl(value: string) {
@@ -48,9 +70,9 @@ function SpecValue({ k, value }: { k: string; value: string }) {
   const color = colorOf(value);
   if (URL_SPEC_KEYS.includes(k) && isUrl(value)) {
     return (
-      <a href={value} target="_blank" rel="noreferrer" className={classes.link}>
+      <a href={getFileUrl(value)} target="_blank" rel="noreferrer" className={classes.link}>
         {k === "Image Link" ? (
-          <Image src={value} h={48} w="auto" fit="contain" radius="sm" />
+          <Image src={getFileUrl(value)} h={48} w="auto" fit="contain" radius="sm" />
         ) : (
           value
         )}
@@ -130,6 +152,74 @@ export default function UiSpecView(props: NodeViewProps) {
   const addSpec = (i: number) =>
     updateRow(i, { specs: [...rows[i].specs, { key: "", value: "" }] });
 
+  const pageId: string | undefined = (editor.storage as any)?.pageId;
+
+  const upload = async (files: File[]): Promise<string[]> => {
+    const urls: string[] = [];
+    for (const file of files) {
+      if (!file.type.startsWith("image/")) continue;
+      try {
+        const a = await uploadFile(file, pageId as string);
+        urls.push(`/api/files/${a.id}/${a.fileName}`);
+      } catch (err: any) {
+        notifications.show({
+          color: "red",
+          message: err?.response?.data?.message || "Image upload failed",
+        });
+      }
+    }
+    return urls;
+  };
+
+  // Uses the latest rows: uploads finish after the state they started from.
+  const rowsRef = useRef(rows);
+  rowsRef.current = rows;
+
+  const addImages = async (i: number, files: File[]) => {
+    const urls = await upload(files);
+    if (!urls.length) return;
+    const cur = rowsRef.current;
+    change(
+      cur.map((r, idx) => (idx === i ? { ...r, images: [...r.images, ...urls] } : r)),
+      true,
+    );
+  };
+
+  const removeImage = (i: number, k: number) =>
+    change(
+      rows.map((r, idx) =>
+        idx === i ? { ...r, images: r.images.filter((_, j) => j !== k) } : r,
+      ),
+      true,
+    );
+
+  const uploadSpecImage = async (i: number, s: number) => {
+    const [url] = await upload(await pickImages(false));
+    if (!url) return;
+    const cur = rowsRef.current;
+    change(
+      cur.map((r, idx) =>
+        idx === i
+          ? { ...r, specs: r.specs.map((f, j) => (j === s ? { ...f, value: url } : f)) }
+          : r,
+      ),
+      true,
+    );
+  };
+
+  const pastedImages = (e: React.ClipboardEvent) =>
+    Array.from(e.clipboardData?.files ?? []).filter((f) => f.type.startsWith("image/"));
+
+  const tableStyle = uiSpecTableStyle(node.attrs);
+  const familyOptions = FONT_FAMILIES.map((f) => ({
+    value: f.value || "default",
+    label: f.name,
+  }));
+  const sizeOptions = [
+    { value: "default", label: "Default size" },
+    ...FONT_SIZES.map((v) => ({ value: `${v}px`, label: `${v} px` })),
+  ];
+
   const removeSpec = (i: number, s: number) =>
     updateRow(i, { specs: rows[i].specs.filter((_, idx) => idx !== s) });
 
@@ -154,6 +244,39 @@ export default function UiSpecView(props: NodeViewProps) {
       data-drag-handle
       contentEditable={false}
     >
+      {editable && (
+        <Group gap={6} mb={4} className={classes.noPrint}>
+          <Select
+            size="xs"
+            w={180}
+            aria-label="Table font"
+            data={familyOptions}
+            value={node.attrs.fontFamily || "default"}
+            onChange={(v) =>
+              updateAttributes({ fontFamily: !v || v === "default" ? "" : v })
+            }
+            allowDeselect={false}
+            comboboxProps={{ withinPortal: true }}
+            renderOption={({ option }) => (
+              <span style={{ fontFamily: option.value === "default" ? undefined : option.value }}>
+                {option.label}
+              </span>
+            )}
+          />
+          <Select
+            size="xs"
+            w={120}
+            aria-label="Table font size"
+            data={sizeOptions}
+            value={node.attrs.fontSize || "default"}
+            onChange={(v) =>
+              updateAttributes({ fontSize: !v || v === "default" ? "" : v })
+            }
+            allowDeselect={false}
+            comboboxProps={{ withinPortal: true }}
+          />
+        </Group>
+      )}
       {editable ? (
         <TextInput
           variant="unstyled"
@@ -171,7 +294,13 @@ export default function UiSpecView(props: NodeViewProps) {
       )}
 
       <div className={classes.scroll}>
-        <table className={classes.table}>
+        <table
+          className={classes.table}
+          style={{
+            fontFamily: node.attrs.fontFamily || undefined,
+            fontSize: tableStyle.includes("font-size") ? node.attrs.fontSize : undefined,
+          }}
+        >
           <colgroup>
             <col style={{ width: "7%" }} />
             <col style={{ width: "13%" }} />
@@ -239,7 +368,49 @@ export default function UiSpecView(props: NodeViewProps) {
                 <td>
                   {text(row.description, (v) => updateRow(i, { description: v }), "Description")}
                 </td>
-                <td>{text(row.content, (v) => updateRow(i, { content: v }), "Content")}</td>
+                <td
+                  onPaste={(e) => {
+                    const files = editable ? pastedImages(e) : [];
+                    if (files.length) {
+                      e.preventDefault();
+                      addImages(i, files);
+                    }
+                  }}
+                >
+                  {text(row.content, (v) => updateRow(i, { content: v }), "Content")}
+                  {row.images.map((src, k) => (
+                    <div key={`${src}-${k}`} className={classes.imageBox}>
+                      <a href={getFileUrl(src)} target="_blank" rel="noreferrer">
+                        <img src={getFileUrl(src)} alt="" className={classes.cellImage} />
+                      </a>
+                      {editable && (
+                        <ActionIcon
+                          size="xs"
+                          variant="filled"
+                          color="gray"
+                          className={`${classes.imageRemove} ${classes.noPrint}`}
+                          onClick={() => removeImage(i, k)}
+                          aria-label="Remove image"
+                        >
+                          <IconX size={12} />
+                        </ActionIcon>
+                      )}
+                    </div>
+                  ))}
+                  {editable && (
+                    <Tooltip label="Add image (or paste one into this cell)">
+                      <Button
+                        className={classes.noPrint}
+                        size="compact-xs"
+                        variant="subtle"
+                        leftSection={<IconPhotoPlus size={12} />}
+                        onClick={async () => addImages(i, await pickImages())}
+                      >
+                        Image
+                      </Button>
+                    </Tooltip>
+                  )}
+                </td>
                 <td>
                   <ul className={classes.specList}>
                     {row.specs.map((f, s) => (
@@ -274,6 +445,21 @@ export default function UiSpecView(props: NodeViewProps) {
                               classNames={{ input: classes.cellInput }}
                               style={{ flex: 1 }}
                             />
+                            {f.key === "Image Link" && (
+                              <Tooltip label="Upload image">
+                                <ActionIcon
+                                  size="xs"
+                                  variant="subtle"
+                                  color="gray"
+                                  mt={4}
+                                  className={classes.noPrint}
+                                  onClick={() => uploadSpecImage(i, s)}
+                                  aria-label="Upload image"
+                                >
+                                  <IconPhotoPlus size={12} />
+                                </ActionIcon>
+                              </Tooltip>
+                            )}
                             <ActionIcon
                               size="xs"
                               variant="subtle"
@@ -293,7 +479,7 @@ export default function UiSpecView(props: NodeViewProps) {
                           </>
                         )}
                         {editable && URL_SPEC_KEYS.includes(f.key) && f.key === "Image Link" && isUrl(f.value) && (
-                          <Image src={f.value} h={48} w="auto" fit="contain" radius="sm" mt={4} />
+                          <Image src={getFileUrl(f.value)} h={48} w="auto" fit="contain" radius="sm" mt={4} />
                         )}
                       </li>
                     ))}
