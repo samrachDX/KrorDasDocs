@@ -1,4 +1,6 @@
 import {
+  IconLayoutList,
+  IconDeviceMobile,
   IconBlockquote,
   IconCaretRightFilled,
   IconCheckbox,
@@ -409,6 +411,22 @@ const CommandGroups: SlashMenuGroupedItemsType = {
       disable: (editor) => !editor.can().insertTabs(),
       command: ({ editor, range }: CommandProps) =>
         editor.chain().focus().deleteRange(range).insertTabs().run(),
+    },
+    {
+      title: "UI Spec table",
+      description: "UI element spec: ID, item, content, format, position, color…",
+      searchTerms: ["ui", "spec", "specification", "element", "urd", "screen", "format", "position"],
+      icon: IconLayoutList,
+      command: ({ editor, range }: CommandProps) =>
+        editor.chain().focus().deleteRange(range).insertUiSpec().run(),
+    },
+    {
+      title: "UI Spec screen",
+      description: "Screen section: heading, purpose, spec table, reference image.",
+      searchTerms: ["ui", "spec", "screen", "page", "urd", "template"],
+      icon: IconDeviceMobile,
+      command: ({ editor, range }: CommandProps) =>
+        editor.chain().focus().deleteRange(range).insertUiSpecScreen().run(),
     },
     {
       title: "Callout",

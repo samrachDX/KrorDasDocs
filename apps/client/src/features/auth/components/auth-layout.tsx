@@ -1,5 +1,5 @@
 import React from "react";
-import { Group, Text } from "@mantine/core";
+import { Stack, Text } from "@mantine/core";
 import classes from "./auth.module.css";
 
 type AuthLayoutProps = {
@@ -9,17 +9,16 @@ type AuthLayoutProps = {
 export function AuthLayout({ children }: AuthLayoutProps) {
   return (
     <>
-      <Group justify="center" gap={8} className={classes.logo}>
+      <Stack align="center" gap={4} className={classes.logo}>
         <img
-          src="/icons/favicon-32x32.png"
-          alt="Docmost"
-          width={22}
-          height={22}
+          src="/icons/krordas-logo.png"
+          alt="KrorDas Docs"
+          style={{ height: 64, width: "auto", userSelect: "none" }}
         />
-        <Text size="28px" fw={700} style={{ userSelect: "none" }}>
-          Docmost
+        <Text size="xs" c="dimmed">
+          Editor by SamrachDX
         </Text>
-      </Group>
+      </Stack>
       <main>{children}</main>
     </>
   );

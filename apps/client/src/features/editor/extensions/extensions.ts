@@ -62,6 +62,7 @@ import {
   Columns,
   Column,
   Status,
+  UiSpec,
   TransclusionSource,
   TransclusionReference,
   TableView,
@@ -92,6 +93,7 @@ import MathBlockView from "@/features/editor/components/math/math-block.tsx";
 import ImageView from "@/features/editor/components/image/image-view.tsx";
 import CalloutView from "@/features/editor/components/callout/callout-view.tsx";
 import StatusView from "@/features/editor/components/status/status-view.tsx";
+import UiSpecView from "@/features/editor/components/ui-spec/ui-spec-view.tsx";
 import VideoView from "@/features/editor/components/video/video-view.tsx";
 import AudioView from "@/features/editor/components/audio/audio-view.tsx";
 import AttachmentView from "@/features/editor/components/attachment/attachment-view.tsx";
@@ -412,6 +414,9 @@ export const mainExtensions = [
   BasePasteMenuExtension,
   Status.configure({
     view: StatusView,
+  }),
+  UiSpec.configure({
+    view: UiSpecView,
   }),
   TransclusionSource.configure({
     view: TransclusionView,

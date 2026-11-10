@@ -217,15 +217,9 @@ export default function PublicSpaceDirectoryPage() {
         <footer className={styles.footer}>
           <div className={clsx(styles.container, styles.footerInner)}>
             <div>
-              Powered by{" "}
-              <a
-                className={styles.footerBranding}
-                href="https://docmost.com?ref=public-space"
-                target="_blank"
-                rel="noreferrer"
-              >
-                Docmost
-              </a>
+              <span className={styles.footerBranding}>
+                KrorDas Docs · Editor by SamrachDX
+              </span>
             </div>
           </div>
         </footer>

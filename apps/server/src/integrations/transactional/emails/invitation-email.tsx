@@ -20,7 +20,7 @@ export const InvitationEmail = ({
     <MailBody>
       <Section style={content}>
         <Text style={paragraph}>Hi there,</Text>
-        <Text style={paragraph}>You have been invited to Docmost.</Text>
+        <Text style={paragraph}>You have been invited to KrorDas Docs.</Text>
         {message && (
           <>
             {invitedByName && (

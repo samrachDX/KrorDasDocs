@@ -4,8 +4,16 @@ import {
   HeadingLevel,
   Paragraph,
   ShadingType,
+  Table,
+  TableCell,
+  TableRow,
   TextRun,
+  WidthType,
 } from 'docx';
+import {
+  normalizeUiSpecRows,
+  UI_SPEC_COLUMNS,
+} from '../ui-spec/ui-spec-utils';
 import { Node } from 'prosemirror-model';
 import { sanitizeIntegrationUrl } from '../integration-link/integration-link';
 import {
@@ -14,7 +22,82 @@ import {
   NodeSerializerAsync,
   OptionsAsync,
 } from './serializer';
-import { writeDocx } from './utils';
+import { CELL_MARGIN, TEXT_WIDTH, writeDocx } from './utils';
+
+// UI spec block -> Word table in the same layout as the source spec documents:
+// ID | Items | Description | Displayed Content / Context | Specification
+const UI_SPEC_COL_RATIOS = [0.08, 0.14, 0.24, 0.2, 0.34];
+const UI_SPEC_HEADER_FILL = '1F3864';
+
+const renderUiSpec: NodeSerializerAsync[string] = (state, node) => {
+  const rows = normalizeUiSpecRows(node.attrs?.rows);
+  const widths = UI_SPEC_COL_RATIOS.map((r) => Math.floor(TEXT_WIDTH * r));
+  const lines = (text: string) =>
+    (text || '')
+      .split('\n')
+      .map((t) => new Paragraph({ children: [new TextRun(t)] }));
+  const cell = (children: Paragraph[], i: number, header = false) =>
+    new TableCell({
+      width: { size: widths[i], type: WidthType.DXA },
+      shading: header
+        ? { type: ShadingType.CLEAR, color: 'auto', fill: UI_SPEC_HEADER_FILL }
+        : undefined,
+      children: children.length ? children : [new Paragraph('')],
+    });
+
+  const headerRow = new TableRow({
+    tableHeader: true,
+    children: UI_SPEC_COLUMNS.map((c, i) =>
+      cell(
+        [new Paragraph({ children: [new TextRun({ text: c, bold: true, color: 'FFFFFF' })] })],
+        i,
+        true,
+      ),
+    ),
+  });
+
+  const bodyRows = rows.map(
+    (r) =>
+      new TableRow({
+        children: [
+          cell(lines(r.id), 0),
+          cell(lines(r.item), 1),
+          cell(lines(r.description), 2),
+          cell(lines(r.content), 3),
+          cell(
+            r.specs.map(
+              (s) =>
+                new Paragraph({
+                  children: s.key
+                    ? [
+                        new TextRun({ text: `- ${s.key}: `, bold: true }),
+                        new TextRun(s.value),
+                      ]
+                    : [new TextRun(`- ${s.value}`)],
+                }),
+            ),
+            4,
+          ),
+        ],
+      }),
+  );
+
+  if (node.attrs?.title) {
+    state.children.push(
+      new Paragraph({ children: [new TextRun({ text: node.attrs.title, bold: true })] }),
+    );
+  }
+  state.children.push(
+    new Table({
+      width: { size: TEXT_WIDTH, type: WidthType.DXA },
+      columnWidths: widths,
+      margins: { left: CELL_MARGIN, right: CELL_MARGIN },
+      rows: [headerRow, ...bodyRows],
+    }),
+  );
+  state.children.push(new Paragraph(''));
+};
+
 
 export type DocxImageResolver = OptionsAsync['getImageBuffer'];
 
@@ -149,6 +232,7 @@ export const defaultAsyncNodes: NodeSerializerAsync = {
   async table(state, node) {
     await state.table(node);
   },
+  uiSpec: renderUiSpec,
   // Docmost stores LaTeX in attrs.text.
   mathInline(state, node) {
     state.math(node.attrs?.text ?? '', { inline: true });
