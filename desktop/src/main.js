@@ -37,6 +37,12 @@ let services = {};
 let folderSync;
 let syncTimer;
 let quitting = false;
+// Set when the app is opened again while this instance is still shutting down.
+let relaunchAfterQuit = false;
+
+const alive = (win) => !!win && !win.isDestroyed();
+// Dialog parent, left out when the window is already closed.
+const parentWin = () => (alive(mainWindow) ? [mainWindow] : []);
 
 function log(msg) {
   fs.mkdirSync(logDir, { recursive: true });
@@ -95,11 +101,15 @@ function createSplash() {
     backgroundColor: '#ffffff',
     icon: path.join(__dirname, '..', 'build', 'icon.png'),
   });
+  splash.on('closed', () => {
+    splash = null;
+  });
   splash.loadFile(path.join(__dirname, 'splash.html'));
 }
 
 function splashStatus(text) {
-  splash?.webContents
+  if (!alive(splash)) return;
+  splash.webContents
     .executeJavaScript(`window.setStatus && window.setStatus(${JSON.stringify(text)})`)
     .catch(() => {});
 }
@@ -173,6 +183,9 @@ function createMainWindow() {
       sandbox: true,
     },
   });
+  mainWindow.on('closed', () => {
+    mainWindow = null;
+  });
   mainWindow.on('page-title-updated', (e, title) => {
     if (!title.includes(APP_NAME)) {
       e.preventDefault();
@@ -198,14 +211,14 @@ function createMainWindow() {
   });
   mainWindow.loadURL(services.server.appUrl + '/home');
   mainWindow.once('ready-to-show', () => {
-    mainWindow.show();
-    splash?.close();
+    if (alive(mainWindow)) mainWindow.show();
+    if (alive(splash)) splash.close();
     splash = null;
   });
 }
 
 async function exportPdf() {
-  if (!mainWindow) return;
+  if (!alive(mainWindow)) return;
   const title = (mainWindow.webContents.getTitle() || 'Document')
     .replace(` - ${APP_NAME}`, '')
     .replace(/[<>:"/\\|?*]/g, '-');
@@ -229,7 +242,7 @@ async function exportPdf() {
 }
 
 async function chooseSyncFolder() {
-  const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
+  const { canceled, filePaths } = await dialog.showOpenDialog(...parentWin(), {
     title: 'Choose a folder to keep your documents in (e.g. OneDrive)',
     defaultPath: config.syncFolder || defaultOneDriveFolder(),
     properties: ['openDirectory', 'createDirectory'],
@@ -250,7 +263,7 @@ async function runSync({ notify = false, force = false } = {}) {
     const res = await folderSync.sync(config.syncFolder, { force });
     log(`sync ok: ${res.written} page(s) written`);
     if (notify) {
-      dialog.showMessageBox(mainWindow, {
+      dialog.showMessageBox(...parentWin(), {
         type: 'info',
         message: 'Sync finished',
         detail: `${res.written} page(s) saved to\n${config.syncFolder}`,
@@ -263,7 +276,7 @@ async function runSync({ notify = false, force = false } = {}) {
 }
 
 function about() {
-  dialog.showMessageBox(mainWindow, {
+  dialog.showMessageBox(...parentWin(), {
     type: 'info',
     title: `About ${APP_NAME}`,
     message: `${APP_NAME} ${app.getVersion()}`,
@@ -435,9 +448,15 @@ async function shutdown() {
 }
 
 app.on('second-instance', () => {
-  if (mainWindow) {
-    if (mainWindow.isMinimized()) mainWindow.restore();
-    mainWindow.focus();
+  // Opened again while still saving and closing: start again once closed.
+  if (quitting) {
+    relaunchAfterQuit = true;
+    return;
+  }
+  const win = alive(mainWindow) ? mainWindow : alive(splash) ? splash : null;
+  if (win) {
+    if (win.isMinimized()) win.restore();
+    win.focus();
   }
 });
 
@@ -453,5 +472,6 @@ app.on('before-quit', async (e) => {
     await Promise.race([runSync(), new Promise((r) => setTimeout(r, 20000))]);
   }
   await shutdown();
+  if (relaunchAfterQuit) app.relaunch();
   app.exit(0);
 });
