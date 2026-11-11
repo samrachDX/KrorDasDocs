@@ -1,4 +1,4 @@
-import { FC, useState } from "react";
+import { FC, useRef, useState } from "react";
 import { IconChevronDown, IconCheck } from "@tabler/icons-react";
 import {
   Button,
@@ -18,6 +18,11 @@ import { useTranslation } from "react-i18next";
 import { isEditorReady } from "@docmost/editor-ext";
 import clsx from "clsx";
 import classes from "./bubble-menu.module.css";
+import {
+  getUiSpecFocus,
+  useUiSpecFocus,
+  UiSpecFocusTarget,
+} from "@/features/editor/components/ui-spec/ui-spec-focus";
 
 export const FONT_FAMILIES: { name: string; value: string }[] = [
   { name: "Default", value: "" },
@@ -59,22 +64,41 @@ export const FontSelector: FC<Props> = ({ editor, compact }) => {
     },
   });
 
+  // A focused UI Spec cell takes the font instead of the editor selection.
+  // Captured when the picker opens: the size box can take focus after that.
+  const cellFocus = useUiSpecFocus();
+  const target = useRef<UiSpecFocusTarget | null>(null);
+
   if (!editor || !state) return null;
 
+  const cell = open ? target.current : cellFocus;
+  const cellStyle = cell?.get();
+  const current = cellStyle
+    ? { fontFamily: cellStyle.fontFamily || "", fontSize: cellStyle.fontSize || "" }
+    : state;
+
   const familyName =
-    FONT_FAMILIES.find((f) => f.value && f.value === state.fontFamily)?.name ||
-    (state.fontFamily ? state.fontFamily.split(",")[0].replace(/'/g, "") : "");
-  const sizeValue = state.fontSize.replace(/px$/, "");
+    FONT_FAMILIES.find((f) => f.value && f.value === current.fontFamily)?.name ||
+    (current.fontFamily ? current.fontFamily.split(",")[0].replace(/'/g, "") : "");
+  const sizeValue = current.fontSize.replace(/px$/, "");
   const label = compact
     ? sizeValue || "Aa"
     : `${familyName || t("Font")}${sizeValue ? ` · ${sizeValue}` : ""}`;
 
   const setFamily = (value: string) => {
+    if (target.current) {
+      target.current.set({ fontFamily: value });
+      return;
+    }
     if (!isEditorReady(editor)) return;
     if (!value) editor.chain().focus().unsetFontFamily().run();
     else editor.chain().focus().setFontFamily(value).run();
   };
   const setSize = (value: string) => {
+    if (target.current) {
+      target.current.set({ fontSize: value ? `${value}px` : "" });
+      return;
+    }
     if (!isEditorReady(editor)) return;
     if (!value) editor.chain().focus().unsetFontSize().run();
     else editor.chain().focus().setFontSize(`${value}px`).run();
@@ -89,7 +113,10 @@ export const FontSelector: FC<Props> = ({ editor, compact }) => {
             radius="0"
             rightSection={<IconChevronDown size={16} />}
             onMouseDown={(e) => e.preventDefault()}
-            onClick={() => setOpen(!open)}
+            onClick={() => {
+              if (!open) target.current = getUiSpecFocus();
+              setOpen(!open);
+            }}
             className={clsx(["font-selector-trigger", classes.buttonRoot])}
             style={{ fontWeight: 500, maxWidth: rem(190) }}
             aria-label={t("Font and size")}
@@ -170,7 +197,7 @@ export const FontSelector: FC<Props> = ({ editor, compact }) => {
                     className={classes.fontItem}
                   >
                     <span>{f.name === "Default" ? t("Default") : f.name}</span>
-                    {(state.fontFamily || "") === f.value && (
+                    {(current.fontFamily || "") === f.value && (
                       <IconCheck size={14} />
                     )}
                   </UnstyledButton>

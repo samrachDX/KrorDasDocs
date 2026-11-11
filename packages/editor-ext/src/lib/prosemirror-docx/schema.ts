@@ -35,19 +35,31 @@ const renderUiSpec: NodeSerializerAsync[string] = async (state, node) => {
   const rows = normalizeUiSpecRows(node.attrs?.rows);
   const widths = UI_SPEC_COL_RATIOS.map((r) => Math.floor(TEXT_WIDTH * r));
   // Table-wide font: "16px" -> 24 half-points; first family in the CSS list.
-  const px = parseFloat(String(node.attrs?.fontSize ?? ''));
-  const size = px > 0 ? Math.round(px * 1.5) : undefined;
-  const font =
-    String(node.attrs?.fontFamily ?? '')
+  // Cell and field fonts override the table font.
+  type Font = { fontFamily?: string; fontSize?: string };
+  const sizeOf = (f?: Font) => {
+    const px = parseFloat(String(f?.fontSize ?? ''));
+    return px > 0 ? Math.round(px * 1.5) : undefined;
+  };
+  const familyOf = (f?: Font) =>
+    String(f?.fontFamily ?? '')
       .split(',')[0]
       .replace(/['"]/g, '')
       .trim() || undefined;
-  const run = (opts: { text: string; bold?: boolean; color?: string }) =>
-    new TextRun({ ...opts, size, font });
-  const lines = (text: string) =>
+  const tableFont = node.attrs as Font;
+  const run = (
+    opts: { text: string; bold?: boolean; color?: string },
+    cellFont?: Font,
+  ) =>
+    new TextRun({
+      ...opts,
+      size: sizeOf(cellFont) ?? sizeOf(tableFont),
+      font: familyOf(cellFont) ?? familyOf(tableFont),
+    });
+  const lines = (text: string, cellFont?: Font) =>
     (text || '')
       .split('\n')
-      .map((t) => new Paragraph({ children: [run({ text: t })] }));
+      .map((t) => new Paragraph({ children: [run({ text: t }, cellFont)] }));
   // Pictures in the Displayed Content column, scaled to the column width.
   const images = async (srcs: string[], maxWidthPx: number) => {
     const out: Paragraph[] = [];
@@ -114,12 +126,12 @@ const renderUiSpec: NodeSerializerAsync[string] = async (state, node) => {
     bodyRows.push(
       new TableRow({
         children: [
-          cell(lines(r.id), 0),
-          cell(lines(r.item), 1),
-          cell(lines(r.description), 2),
+          cell(lines(r.id, r.styles?.id), 0),
+          cell(lines(r.item, r.styles?.item), 1),
+          cell(lines(r.description, r.styles?.description), 2),
           cell(
             [
-              ...(r.content ? lines(r.content) : []),
+              ...(r.content ? lines(r.content, r.styles?.content) : []),
               ...(await images(r.images, contentWidthPx)),
             ],
             3,
@@ -129,8 +141,11 @@ const renderUiSpec: NodeSerializerAsync[string] = async (state, node) => {
               (s) =>
                 new Paragraph({
                   children: s.key
-                    ? [run({ text: `- ${s.key}: `, bold: true }), run({ text: s.value })]
-                    : [run({ text: `- ${s.value}` })],
+                    ? [
+                        run({ text: `- ${s.key}: `, bold: true }, s.style),
+                        run({ text: s.value }, s.style),
+                      ]
+                    : [run({ text: `- ${s.value}` }, s.style)],
                 }),
             ),
             4,

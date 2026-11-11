@@ -34,7 +34,15 @@ import {
   UiSpecRow,
   URL_SPEC_KEYS,
   uiSpecTableStyle,
+  UiSpecCellStyle,
+  UiSpecTextCell,
 } from "@docmost/editor-ext";
+import {
+  clearUiSpecFocus,
+  notifyUiSpecFocus,
+  setUiSpecFocus,
+  UiSpecFocusTarget,
+} from "./ui-spec-focus";
 import { notifications } from "@mantine/notifications";
 import { getFileUrl } from "@/lib/config.ts";
 import { uploadFile } from "@/features/page/services/page-service.ts";
@@ -43,6 +51,24 @@ import {
   FONT_SIZES,
 } from "@/features/editor/components/bubble-menu/font-selector";
 import classes from "./ui-spec.module.css";
+
+const fontStyle = (st?: UiSpecCellStyle): React.CSSProperties | undefined =>
+  st && (st.fontFamily || st.fontSize)
+    ? {
+        fontFamily: st.fontFamily || undefined,
+        fontSize: /^\d+(\.\d+)?px$/.test(st.fontSize || "") ? st.fontSize : undefined,
+      }
+    : undefined;
+
+const mergeStyle = (
+  st: UiSpecCellStyle | undefined,
+  patch: UiSpecCellStyle,
+): UiSpecCellStyle | undefined => {
+  const next: UiSpecCellStyle = { ...st, ...patch };
+  if (!next.fontFamily) delete next.fontFamily;
+  if (!next.fontSize) delete next.fontSize;
+  return Object.keys(next).length ? next : undefined;
+};
 
 const CSS_COLOR = /^(#[0-9a-f]{3,8}|rgba?\([^)]*\)|hsla?\([^)]*\))$/i;
 
@@ -288,20 +314,100 @@ export default function UiSpecView(props: NodeViewProps) {
   const removeSpec = (i: number, s: number) =>
     updateRow(i, { specs: rows[i].specs.filter((_, idx) => idx !== s) });
 
-  const text = (value: string, onChange: (v: string) => void, placeholder: string) =>
-    editable ? (
-      <Textarea
-        variant="unstyled"
-        autosize
-        minRows={1}
-        value={value}
-        placeholder={placeholder}
-        onChange={(e) => onChange(e.currentTarget.value)}
-        classNames={{ input: classes.cellInput }}
-      />
-    ) : (
-      <div className={classes.cellText}>{value}</div>
+  // Font picker targets: one per text cell and per spec field, kept stable so
+  // focus and blur can match them.
+  const targets = useRef(new Map<string, UiSpecFocusTarget>());
+  const targetFor = (key: string, get: () => UiSpecCellStyle | undefined, set: (p: UiSpecCellStyle) => void) => {
+    let t = targets.current.get(key);
+    if (!t) {
+      t = { get: () => ({}), set: () => {} };
+      targets.current.set(key, t);
+    }
+    t.get = () => get() ?? {};
+    t.set = (patch) => {
+      set(patch);
+      notifyUiSpecFocus();
+    };
+    return t;
+  };
+
+  const cellTarget = (i: number, cell: UiSpecTextCell) =>
+    targetFor(
+      `${i}:${cell}`,
+      () => rowsRef.current[i]?.styles?.[cell],
+      (patch) => {
+        const cur = rowsRef.current;
+        change(
+          cur.map((r, idx) => {
+            if (idx !== i) return r;
+            const styles = { ...r.styles };
+            const st = mergeStyle(styles[cell], patch);
+            if (st) styles[cell] = st;
+            else delete styles[cell];
+            return { ...r, styles };
+          }),
+          true,
+        );
+      },
     );
+
+  const fieldTarget = (i: number, s: number) =>
+    targetFor(
+      `${i}:spec:${s}`,
+      () => rowsRef.current[i]?.specs[s]?.style,
+      (patch) => {
+        const cur = rowsRef.current;
+        change(
+          cur.map((r, idx) =>
+            idx !== i
+              ? r
+              : {
+                  ...r,
+                  specs: r.specs.map((f, j) => {
+                    if (j !== s) return f;
+                    const style = mergeStyle(f.style, patch);
+                    const { style: _old, ...rest } = f;
+                    return style ? { ...rest, style } : rest;
+                  }),
+                },
+          ),
+          true,
+        );
+      },
+    );
+
+  const focusProps = (t: UiSpecFocusTarget) => ({
+    onFocus: () => setUiSpecFocus(t),
+    onBlur: () => clearUiSpecFocus(t),
+  });
+
+  const text = (
+    value: string,
+    onChange: (v: string) => void,
+    placeholder: string,
+    i: number,
+    cell: UiSpecTextCell,
+  ) => {
+    const style = fontStyle(rows[i]?.styles?.[cell]);
+    return editable ? (
+      <div style={style}>
+        <Textarea
+          variant="unstyled"
+          autosize
+          minRows={1}
+          value={value}
+          placeholder={placeholder}
+          onChange={(e) => onChange(e.currentTarget.value)}
+          classNames={{ input: classes.cellInput }}
+          {...focusProps(cellTarget(i, cell))}
+        />
+      </div>
+    ) : (
+      <div className={classes.cellText} style={style}>
+        {value}
+      </div>
+    );
+  };
 
   return (
     <NodeViewWrapper
@@ -446,11 +552,11 @@ export default function UiSpecView(props: NodeViewProps) {
                       </Menu.Dropdown>
                     </Menu>
                   )}
-                  {text(row.id, (v) => updateRow(i, { id: v }), "1.1")}
+                  {text(row.id, (v) => updateRow(i, { id: v }), "1.1", i, "id")}
                 </td>
-                <td>{text(row.item, (v) => updateRow(i, { item: v }), "Item")}</td>
+                <td>{text(row.item, (v) => updateRow(i, { item: v }), "Item", i, "item")}</td>
                 <td>
-                  {text(row.description, (v) => updateRow(i, { description: v }), "Description")}
+                  {text(row.description, (v) => updateRow(i, { description: v }), "Description", i, "description")}
                 </td>
                 <td
                   onPaste={(e) => {
@@ -461,7 +567,7 @@ export default function UiSpecView(props: NodeViewProps) {
                     }
                   }}
                 >
-                  {text(row.content, (v) => updateRow(i, { content: v }), "Content")}
+                  {text(row.content, (v) => updateRow(i, { content: v }), "Content", i, "content")}
                   {row.images.map((src, k) => (
                     <div key={`${src}-${k}`} className={classes.imageBox}>
                       <a href={getFileUrl(src)} target="_blank" rel="noreferrer">
@@ -504,6 +610,7 @@ export default function UiSpecView(props: NodeViewProps) {
                       <li
                         key={s}
                         className={`${classes.specItem} ${over === `field-${i}-${s}` ? classes.dropField : ""}`}
+                        style={fontStyle(f.style)}
                         {...dragProps(`field-${i}-${s}`, () => dropField(i, s), "field")}
                       >
                         {editable ? (
@@ -526,6 +633,7 @@ export default function UiSpecView(props: NodeViewProps) {
                               onChange={(v) => updateSpec(i, s, { key: v })}
                               classNames={{ input: classes.keyInput }}
                               comboboxProps={{ withinPortal: true }}
+                              {...focusProps(fieldTarget(i, s))}
                               w={100}
                             />
                             <span className={classes.colon}>:</span>
@@ -538,6 +646,7 @@ export default function UiSpecView(props: NodeViewProps) {
                               minRows={1}
                               size="xs"
                               placeholder="Value"
+                              {...focusProps(fieldTarget(i, s))}
                               value={f.value}
                               onChange={(e) =>
                                 updateSpec(i, s, { value: e.currentTarget.value })

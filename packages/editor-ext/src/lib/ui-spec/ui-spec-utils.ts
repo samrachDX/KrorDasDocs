@@ -1,6 +1,15 @@
+// Font for one cell or spec field (CSS font-family list, size like "14px").
+export interface UiSpecCellStyle {
+  fontFamily?: string;
+  fontSize?: string;
+}
+
+export type UiSpecTextCell = 'id' | 'item' | 'description' | 'content';
+
 export interface UiSpecField {
   key: string;
   value: string;
+  style?: UiSpecCellStyle;
 }
 
 export interface UiSpecRow {
@@ -11,6 +20,8 @@ export interface UiSpecRow {
   // Pictures shown under the Displayed Content / Context text.
   images: string[];
   specs: UiSpecField[];
+  // Per-cell fonts, keyed by column.
+  styles?: Partial<Record<UiSpecTextCell, UiSpecCellStyle>>;
 }
 
 export const UI_SPEC_COLUMNS = [
@@ -87,6 +98,40 @@ export function nextUiSpecId(prev?: string): string {
   return `${m[1]}${parseInt(m[2], 10) + 1}${m[3]}`;
 }
 
+function normalizeCellStyle(v: any): UiSpecCellStyle | undefined {
+  if (!v || typeof v !== 'object') return undefined;
+  const out: UiSpecCellStyle = {};
+  if (typeof v.fontFamily === 'string' && v.fontFamily) out.fontFamily = v.fontFamily;
+  if (typeof v.fontSize === 'string' && v.fontSize) out.fontSize = v.fontSize;
+  return Object.keys(out).length ? out : undefined;
+}
+
+function normalizeRowStyles(v: any): { styles?: UiSpecRow['styles'] } {
+  if (!v || typeof v !== 'object') return {};
+  const styles: UiSpecRow['styles'] = {};
+  for (const k of ['id', 'item', 'description', 'content'] as UiSpecTextCell[]) {
+    const st = normalizeCellStyle(v[k]);
+    if (st) styles[k] = st;
+  }
+  return Object.keys(styles).length ? { styles } : {};
+}
+
+const SAFE_FONT_FAMILY = /^[\w\s,'"\-.]*$/;
+
+// Inline CSS for a font setting; values that are not plain font names or px
+// sizes are dropped.
+export function uiSpecFontCss(style?: UiSpecCellStyle | null): string {
+  if (!style) return '';
+  const parts: string[] = [];
+  if (style.fontFamily && SAFE_FONT_FAMILY.test(style.fontFamily)) {
+    parts.push(`font-family: ${style.fontFamily}`);
+  }
+  if (style.fontSize && /^\d+(\.\d+)?px$/.test(style.fontSize)) {
+    parts.push(`font-size: ${style.fontSize}`);
+  }
+  return parts.join('; ');
+}
+
 export function normalizeUiSpecRows(value: unknown): UiSpecRow[] {
   let rows: any = value;
   if (typeof rows === 'string') {
@@ -106,11 +151,17 @@ export function normalizeUiSpecRows(value: unknown): UiSpecRow[] {
       ? r.images.map((x: any) => String(x ?? '')).filter(Boolean)
       : [],
     specs: Array.isArray(r?.specs)
-      ? r.specs.map((s: any) => ({
-          key: String(s?.key ?? ''),
-          value: String(s?.value ?? ''),
-        }))
+      ? r.specs.map((s: any) => {
+          const field: UiSpecField = {
+            key: String(s?.key ?? ''),
+            value: String(s?.value ?? ''),
+          };
+          const style = normalizeCellStyle(s?.style);
+          if (style) field.style = style;
+          return field;
+        })
       : [],
+    ...normalizeRowStyles(r?.styles),
   }));
 }
 

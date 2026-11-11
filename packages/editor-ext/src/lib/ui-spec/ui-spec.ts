@@ -5,6 +5,7 @@ import {
   normalizeUiSpecRows,
   rowsFromTableElement,
   specToText,
+  uiSpecFontCss,
   UI_SPEC_COLUMNS,
   UiSpecRow,
 } from './ui-spec-utils';
@@ -30,17 +31,8 @@ declare module '@tiptap/core' {
   }
 }
 
-const SAFE_CSS = /^[\w\s,'"\-.]*$/;
-
 export function uiSpecTableStyle(attrs: Record<string, any>): string {
-  const parts: string[] = [];
-  if (attrs.fontFamily && SAFE_CSS.test(attrs.fontFamily)) {
-    parts.push(`font-family: ${attrs.fontFamily}`);
-  }
-  if (attrs.fontSize && /^\d+(\.\d+)?px$/.test(attrs.fontSize)) {
-    parts.push(`font-size: ${attrs.fontSize}`);
-  }
-  return parts.join('; ');
+  return uiSpecFontCss({ fontFamily: attrs.fontFamily, fontSize: attrs.fontSize });
 }
 
 export const UiSpec = Node.create<UiSpecOptions>({
@@ -122,15 +114,19 @@ export const UiSpec = Node.create<UiSpecOptions>({
     ];
     const lines = (text: string) =>
       (text || '').split('\n').map((t) => ['p', {}, t]);
+    const css = (st?: { fontFamily?: string; fontSize?: string }) => {
+      const style = uiSpecFontCss(st);
+      return style ? { style } : {};
+    };
     const body = rows.map((r) => [
       'tr',
       {},
-      ['td', {}, ['p', {}, r.id]],
-      ['td', {}, ['p', {}, r.item]],
-      ['td', {}, ...lines(r.description)],
+      ['td', css(r.styles?.id), ['p', {}, r.id]],
+      ['td', css(r.styles?.item), ['p', {}, r.item]],
+      ['td', css(r.styles?.description), ...lines(r.description)],
       [
         'td',
-        {},
+        css(r.styles?.content),
         ...lines(r.content),
         ...r.images.map((src) => ['p', {}, ['img', { src, alt: '' }]]),
       ],
@@ -138,7 +134,7 @@ export const UiSpec = Node.create<UiSpecOptions>({
         'td',
         {},
         r.specs.length
-          ? ['ul', {}, ...r.specs.map((s) => ['li', {}, ['p', {}, specToText(s)]])]
+          ? ['ul', {}, ...r.specs.map((s) => ['li', css(s.style), ['p', {}, specToText(s)]])]
           : ['p', {}, ''],
       ],
     ]);
