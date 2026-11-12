@@ -65,6 +65,7 @@ import {
   UiSpec,
   MindMap,
   BlockLineHeight,
+  ListNumbering,
   TransclusionSource,
   TransclusionReference,
   TableView,
@@ -425,6 +426,7 @@ export const mainExtensions = [
     view: MindMapView,
   }),
   BlockLineHeight,
+  ListNumbering,
   FormatPainter,
   UiSpec.configure({
     view: UiSpecView,

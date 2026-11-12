@@ -58,29 +58,37 @@
     margin-bottom: 0;
   }
 
+  /* One step scale above the 16px body text (h1 26, h2 22, h3 20, h4 18,
+     h5/h6 bold body size), so every heading is larger than normal text. */
   h1,
   h2,
-  h3 {
+  h3,
+  h4,
+  h5,
+  h6 {
     letter-spacing: -0.01em;
-    line-height: 1.2;
+    line-height: 1.3;
     font-weight: 600;
     margin-bottom: 0;
   }
 
   h1 strong,
   h2 strong,
-  h3 strong {
+  h3 strong,
+  h4 strong,
+  h5 strong,
+  h6 strong {
     font-weight: 600;
   }
 
   h1 {
-    font-size: 1.875rem;
-    margin-top: 1.875rem;
+    font-size: 1.625rem;
+    margin-top: 1.625rem;
   }
 
   h2 {
-    font-size: 1.5rem;
-    margin-top: 1.5rem;
+    font-size: 1.375rem;
+    margin-top: 1.375rem;
   }
 
   h3 {
@@ -88,11 +96,15 @@
     margin-top: 1.25rem;
   }
 
-  h4,
+  h4 {
+    font-size: 1.125rem;
+    margin-top: 1.125rem;
+  }
+
   h5,
   h6 {
-    line-height: 1.1;
-    margin-bottom: 10px;
+    font-size: 1rem;
+    margin-top: 1rem;
   }
 
   code {

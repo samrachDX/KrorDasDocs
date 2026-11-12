@@ -424,10 +424,11 @@ async function boot() {
     createMainWindow();
     syncTimer = setInterval(() => runSync(), 10 * 60 * 1000);
   } catch (err) {
-    log(`startup failed: ${err.stack || err}`);
+    const detail = (err && (err.stack || err.message)) || String(err ?? 'unknown error (see postgres.log)');
+    log(`startup failed: ${detail}`);
     dialog.showErrorBox(
       `${APP_NAME} could not start`,
-      `${err.message || err}\n\nLogs: ${logDir}`,
+      `${(err && err.message) || detail}\n\nLogs: ${logDir}`,
     );
     await shutdown();
     app.exit(1);

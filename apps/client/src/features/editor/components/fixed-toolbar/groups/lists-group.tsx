@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import clsx from "clsx";
 import type { ToolbarState } from "../use-toolbar-state";
 import classes from "../fixed-toolbar.module.css";
+import { ListStyleMenu } from "./list-style-menu";
 
 interface Props {
   editor: Editor;
@@ -38,11 +39,12 @@ export const ListsGroup: FC<Props> = ({ editor, state }) => {
           aria-label={t("Numbered List")}
           aria-pressed={state.isOrderedList}
           className={clsx({ [classes.active]: state.isOrderedList })}
-          onClick={() => editor.chain().focus().toggleOrderedList().run()}
+          onClick={() => editor.chain().focus().toggleNumberedList().run()}
         >
           <IconListNumbers size={16} />
         </ActionIcon>
       </Tooltip>
+      <ListStyleMenu editor={editor} />
       <Tooltip label={t("To-do List")} withArrow>
         <ActionIcon
           variant="subtle"

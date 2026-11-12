@@ -17,6 +17,7 @@ import {
 } from '../ui-spec/ui-spec-utils';
 import { Node } from 'prosemirror-model';
 import { MindMapTopic, normalizeMindMap } from '../mind-map/mind-map-utils';
+import { headingNumbers } from '../list-numbering';
 import { imageDimensionsFromData } from 'image-dimensions';
 import { sanitizeIntegrationUrl } from '../integration-link/integration-link';
 import {
@@ -282,6 +283,9 @@ const renderIntegrationCard: NodeSerializerAsync[string] = async (
   state.closeBlock(node);
 };
 
+// Heading numbers of the page being exported (set by pageNodeToDocxBuffer).
+let headingLabels = new Map<Node, string>();
+
 export const defaultAsyncNodes: NodeSerializerAsync = {
   text(state, node) {
     state.text(node.text ?? '');
@@ -291,6 +295,8 @@ export const defaultAsyncNodes: NodeSerializerAsync = {
     state.closeBlock(node, blockFormat(node));
   },
   async heading(state, node) {
+    const label = headingLabels.get(node);
+    if (label) state.text(`${label} `);
     await state.renderInline(node);
     const heading = [
       HeadingLevel.HEADING_1,
@@ -320,7 +326,11 @@ export const defaultAsyncNodes: NodeSerializerAsync = {
     await state.renderList(node, 'bullets');
   },
   async orderedList(state, node) {
-    await state.renderList(node, 'numbered');
+    const style = node.attrs?.listStyle;
+    await state.renderList(
+      node,
+      style === 'paren' ? 'numberedParen' : style === 'legal' ? 'numberedLegal' : 'numbered',
+    );
   },
   async listItem(state, node) {
     await state.renderListItem(node);
@@ -490,21 +500,22 @@ export async function pageNodeToDocxBuffer(
   doc: Node,
   getImageBuffer: DocxImageResolver,
 ): Promise<Buffer> {
+  headingLabels = headingNumbers(doc);
   const serializer = new DocxSerializerAsync(defaultAsyncNodes, defaultMarks);
   const wordDoc = await serializer.serializeAsync(
     doc,
     { getImageBuffer },
     // docx's built-in heading styles are blue (#2E74B5 / #1F4D78). The editor
     // has no heading color, so override the default heading run colors to the
-    // normal text color. Sizes/italics mirror docx's own defaults so only the
-    // color changes.
+    // normal text color. Sizes step down from H1 to H6 and never drop below the
+    // 11pt body text, like the editor.
     () =>
       ({
         styles: {
           default: {
             document: { paragraph: { spacing: { after: 160 } } },
             heading1: {
-              run: { color: '000000', size: 32 },
+              run: { color: '000000', bold: true, size: 32 },
               paragraph: {
                 keepNext: true,
                 keepLines: true,
@@ -512,7 +523,7 @@ export async function pageNodeToDocxBuffer(
               },
             },
             heading2: {
-              run: { color: '000000', size: 26 },
+              run: { color: '000000', bold: true, size: 28 },
               paragraph: {
                 keepNext: true,
                 keepLines: true,
@@ -520,7 +531,7 @@ export async function pageNodeToDocxBuffer(
               },
             },
             heading3: {
-              run: { color: '000000', size: 24 },
+              run: { color: '000000', bold: true, size: 26 },
               paragraph: {
                 keepNext: true,
                 keepLines: true,
@@ -528,7 +539,7 @@ export async function pageNodeToDocxBuffer(
               },
             },
             heading4: {
-              run: { color: '000000', italics: true },
+              run: { color: '000000', bold: true, size: 24 },
               paragraph: {
                 keepNext: true,
                 keepLines: true,
@@ -536,7 +547,7 @@ export async function pageNodeToDocxBuffer(
               },
             },
             heading5: {
-              run: { color: '000000' },
+              run: { color: '000000', bold: true, size: 22 },
               paragraph: {
                 keepNext: true,
                 keepLines: true,
@@ -544,7 +555,7 @@ export async function pageNodeToDocxBuffer(
               },
             },
             heading6: {
-              run: { color: '000000' },
+              run: { color: '000000', bold: true, size: 22 },
               paragraph: {
                 keepNext: true,
                 keepLines: true,

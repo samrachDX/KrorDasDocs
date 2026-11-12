@@ -77,6 +77,57 @@ function pipeTo(child, stream) {
   child.stderr?.pipe(stream, { end: false });
 }
 
+// A crash or forced quit leaves postmaster.pid behind, and Postgres then
+// refuses to start when that PID has been reused by another process. Remove
+// the file when its process is gone or is not a Postgres for this folder; stop
+// an orphaned Postgres of our own folder first.
+async function clearStalePostmaster(dbDir) {
+  const pidFile = path.join(dbDir, 'postmaster.pid');
+  let pid;
+  try {
+    pid = parseInt(fs.readFileSync(pidFile, 'utf8').split('\n')[0], 10);
+  } catch {
+    return;
+  }
+  if (!pid) return;
+  const alive = (p) => {
+    try {
+      process.kill(p, 0);
+      return true;
+    } catch (e) {
+      return e.code === 'EPERM';
+    }
+  };
+  if (alive(pid)) {
+    if (process.platform === 'win32') return; // Postgres checks this itself.
+    let args = '';
+    try {
+      args = require('node:child_process')
+        .execFileSync('ps', ['-p', String(pid), '-o', 'args='], { encoding: 'utf8' });
+    } catch {
+      args = '';
+    }
+    if (/postgres/.test(args) && args.includes(dbDir)) {
+      try {
+        process.kill(pid, 'SIGINT');
+      } catch {
+        // already gone
+      }
+      for (let i = 0; i < 50 && alive(pid); i += 1) {
+        await new Promise((r) => setTimeout(r, 200));
+      }
+      if (alive(pid)) return;
+    } else if (/postgres/.test(args)) {
+      return;
+    }
+  }
+  try {
+    fs.rmSync(pidFile, { force: true });
+  } catch {
+    // Postgres reports the problem itself.
+  }
+}
+
 async function startPostgres({ dataDir, logDir, password }) {
   const EmbeddedPostgres = require('embedded-postgres').default;
   const port = await freePort(54329);
@@ -116,6 +167,7 @@ async function startPostgres({ dataDir, logDir, password }) {
   if (firstRun) {
     await pg.initialise();
   }
+  await clearStalePostmaster(dbDir);
   await pg.start();
   if (firstRun) {
     await pg.createDatabase('krordas');
