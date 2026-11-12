@@ -10,14 +10,9 @@ export default function DocsFooterBranding({
 }) {
   return (
     <footer className={clsx(styles.footer, className)}>
-      <a
-        className={styles.footerBranding}
-        href={`https://docmost.com?ref=${refSource}`}
-        target="_blank"
-        rel="noreferrer"
-      >
-        Powered by Docmost
-      </a>
+      <span className={styles.footerBranding}>
+        KrorDas Docs · Editor by SamrachDX
+      </span>
     </footer>
   );
 }

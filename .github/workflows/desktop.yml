@@ -1,0 +1,114 @@
+name: Desktop app
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'desktop-v*'
+  pull_request:
+    paths:
+      - 'desktop/**'
+      - '.github/workflows/desktop.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            name: windows-x64
+          - os: macos-latest
+            name: macos-arm64
+          - os: macos-15-intel
+            name: macos-x64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build editor
+        run: pnpm build
+        env:
+          NX_DAEMON: 'false'
+
+      - name: Build cache server (macOS)
+        if: runner.os == 'macOS'
+        run: desktop/scripts/build-redis-mac.sh
+
+      - name: Set up MSYS2 (Windows)
+        if: runner.os == 'Windows'
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MSYS
+          update: true
+          install: make gcc pkg-config curl tar
+
+      - name: Build cache server (Windows)
+        if: runner.os == 'Windows'
+        shell: msys2 {0}
+        run: desktop/scripts/build-redis-win.sh
+
+      - name: Check cache server runs (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          & desktop\resources\redis\redis-server.exe --version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Install desktop dependencies
+        working-directory: desktop
+        run: npm ci
+
+      - name: Bundle app resources
+        working-directory: desktop
+        run: node scripts/prepare-resources.mjs
+
+      - name: Bundle KuFlow diagram editor
+        working-directory: desktop
+        run: node scripts/prepare-kuflow.mjs
+
+      - name: Build installer
+        working-directory: desktop
+        run: npx electron-builder --publish never
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+
+      # Installers go to a GitHub release rather than workflow artifacts:
+      # release files do not count toward the Actions storage quota.
+      - name: Publish installer to the "desktop-dev" pre-release
+        if: ${{ !startsWith(github.ref, 'refs/tags/desktop-v') }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh release view desktop-dev >/dev/null 2>&1 || \
+            gh release create desktop-dev --prerelease \
+              --title "KrorDas Docs (latest test build)" \
+              --notes "Latest test build of the KrorDas Docs desktop app. Files are replaced by every new build." || true
+          shopt -s nullglob
+          files=(desktop/release/*.exe desktop/release/*.dmg)
+          gh release upload desktop-dev "${files[@]}" --clobber
+
+      - name: Publish installer to the release
+        if: startsWith(github.ref, 'refs/tags/desktop-v')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: KrorDas Docs ${{ github.ref_name }}
+          files: |
+            desktop/release/*.exe
+            desktop/release/*.dmg
+          fail_on_unmatched_files: false

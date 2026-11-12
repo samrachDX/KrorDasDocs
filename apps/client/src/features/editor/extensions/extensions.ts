@@ -9,7 +9,7 @@ import { Placeholder } from "@/features/editor/extensions/placeholder";
 import { Superscript } from "@tiptap/extension-superscript";
 import SubScript from "@tiptap/extension-subscript";
 import { Typography } from "@tiptap/extension-typography";
-import { TextStyle } from "@tiptap/extension-text-style";
+import { TextStyle, FontFamily, FontSize } from "@tiptap/extension-text-style";
 import { Color } from "@tiptap/extension-color";
 import { Youtube } from "@tiptap/extension-youtube";
 import SlashCommand, {
@@ -62,6 +62,10 @@ import {
   Columns,
   Column,
   Status,
+  UiSpec,
+  MindMap,
+  BlockLineHeight,
+  ListNumbering,
   TransclusionSource,
   TransclusionReference,
   TableView,
@@ -92,6 +96,9 @@ import MathBlockView from "@/features/editor/components/math/math-block.tsx";
 import ImageView from "@/features/editor/components/image/image-view.tsx";
 import CalloutView from "@/features/editor/components/callout/callout-view.tsx";
 import StatusView from "@/features/editor/components/status/status-view.tsx";
+import UiSpecView from "@/features/editor/components/ui-spec/ui-spec-view.tsx";
+import MindMapView from "@/features/editor/components/mind-map/mind-map-view.tsx";
+import { FormatPainter } from "@/features/editor/extensions/format-painter";
 import VideoView from "@/features/editor/components/video/video-view.tsx";
 import AudioView from "@/features/editor/components/audio/audio-view.tsx";
 import AttachmentView from "@/features/editor/components/attachment/attachment-view.tsx";
@@ -258,6 +265,8 @@ export const mainExtensions = [
   }),
   TextStyle,
   Color,
+  FontFamily,
+  FontSize,
   SlashCommand,
   EmojiCommand,
   Comment.configure({
@@ -413,6 +422,15 @@ export const mainExtensions = [
   Status.configure({
     view: StatusView,
   }),
+  MindMap.configure({
+    view: MindMapView,
+  }),
+  BlockLineHeight,
+  ListNumbering,
+  FormatPainter,
+  UiSpec.configure({
+    view: UiSpecView,
+  }),
   TransclusionSource.configure({
     view: TransclusionView,
   }),
@@ -463,7 +481,7 @@ const TEMPLATE_EXCLUDED_SLASH_ITEMS = new Set([
   "Image",
   "Video",
   "File attachment",
-  "Draw.io (diagrams.net)",
+  "KuFlow diagram",
   "Excalidraw (Whiteboard)",
   "Audio",
   "Synced block",

@@ -1,12 +1,24 @@
 import {
   ExternalHyperlink,
+  ImageRun,
   FootnoteReferenceRun,
   HeadingLevel,
   Paragraph,
   ShadingType,
+  Table,
+  TableCell,
+  TableRow,
   TextRun,
+  WidthType,
 } from 'docx';
+import {
+  normalizeUiSpecRows,
+  UI_SPEC_COLUMNS,
+} from '../ui-spec/ui-spec-utils';
 import { Node } from 'prosemirror-model';
+import { MindMapTopic, normalizeMindMap } from '../mind-map/mind-map-utils';
+import { headingNumbers } from '../list-numbering';
+import { imageDimensionsFromData } from 'image-dimensions';
 import { sanitizeIntegrationUrl } from '../integration-link/integration-link';
 import {
   DocxSerializerAsync,
@@ -14,7 +26,185 @@ import {
   NodeSerializerAsync,
   OptionsAsync,
 } from './serializer';
-import { writeDocx } from './utils';
+import { CELL_MARGIN, TEXT_WIDTH, writeDocx } from './utils';
+
+// UI spec block -> Word table in the same layout as the source spec documents:
+// ID | Items | Description | Displayed Content / Context | Specification
+const UI_SPEC_COL_RATIOS = [0.08, 0.14, 0.24, 0.2, 0.34];
+const UI_SPEC_HEADER_FILL = '1F3864';
+
+// Indent (0-8 steps of 2em, about 0.33in each) and line spacing (multiple of
+// single, docx counts 240 per line) from the paragraph/heading attributes.
+function blockFormat(node: Node): Record<string, any> {
+  const out: Record<string, any> = {};
+  const indent = Number(node.attrs?.indent) || 0;
+  if (indent > 0) out.indent = { left: indent * 480 };
+  const lh = parseFloat(String(node.attrs?.lineHeight ?? ''));
+  if (lh > 0) out.spacing = { line: Math.round(lh * 240) };
+  return out;
+}
+
+// Mind map -> bold central topic and an indented outline of its topics.
+const renderMindMap: NodeSerializerAsync[string] = (state, node) => {
+  const map = normalizeMindMap(node.attrs?.data);
+  state.children.push(
+    new Paragraph({ children: [new TextRun({ text: map.text, bold: true })] }),
+  );
+  const walk = (topics: MindMapTopic[], level: number) => {
+    for (const t of topics) {
+      state.children.push(
+        new Paragraph({
+          indent: { left: 360 * (level + 1), hanging: 240 },
+          children: [new TextRun(`• ${t.text}`)],
+        }),
+      );
+      walk(t.children, level + 1);
+    }
+  };
+  walk(map.children, 0);
+  state.children.push(new Paragraph(''));
+};
+
+const renderUiSpec: NodeSerializerAsync[string] = async (state, node) => {
+  const rows = normalizeUiSpecRows(node.attrs?.rows);
+  const widths = UI_SPEC_COL_RATIOS.map((r) => Math.floor(TEXT_WIDTH * r));
+  // Table-wide font: "16px" -> 24 half-points; first family in the CSS list.
+  // Cell and field fonts override the table font.
+  type Font = { fontFamily?: string; fontSize?: string };
+  const sizeOf = (f?: Font) => {
+    const px = parseFloat(String(f?.fontSize ?? ''));
+    return px > 0 ? Math.round(px * 1.5) : undefined;
+  };
+  const familyOf = (f?: Font) =>
+    String(f?.fontFamily ?? '')
+      .split(',')[0]
+      .replace(/['"]/g, '')
+      .trim() || undefined;
+  const tableFont = node.attrs as Font;
+  const run = (
+    opts: { text: string; bold?: boolean; color?: string },
+    cellFont?: Font,
+  ) =>
+    new TextRun({
+      ...opts,
+      size: sizeOf(cellFont) ?? sizeOf(tableFont),
+      font: familyOf(cellFont) ?? familyOf(tableFont),
+    });
+  const lines = (text: string, cellFont?: Font) =>
+    (text || '')
+      .split('\n')
+      .map((t) => new Paragraph({ children: [run({ text: t }, cellFont)] }));
+  // Pictures in the Displayed Content column, scaled to the column width.
+  const images = async (srcs: string[], maxWidthPx: number) => {
+    const out: Paragraph[] = [];
+    for (const src of srcs) {
+      try {
+        const data = await Promise.resolve(
+          (state as any).options.getImageBuffer(src),
+        );
+        const dim = imageDimensionsFromData(data);
+        if (!dim) continue;
+        const width = Math.min(maxWidthPx, dim.width);
+        const ext = src.split('?')[0].replace(/.*\./, '').toLowerCase();
+        out.push(
+          new Paragraph({
+            children: [
+              new ImageRun({
+                data,
+                type: (['png', 'jpg', 'gif', 'bmp'].includes(ext)
+                  ? ext
+                  : ext === 'jpeg'
+                    ? 'jpg'
+                    : 'png') as any,
+                transformation: {
+                  width,
+                  height: Math.round((width * dim.height) / dim.width),
+                },
+              }),
+            ],
+          }),
+        );
+      } catch {
+        // Missing or external image: leave it out of the export.
+      }
+    }
+    return out;
+  };
+  const cell = (children: Paragraph[], i: number, header = false) =>
+    new TableCell({
+      width: { size: widths[i], type: WidthType.DXA },
+      shading: header
+        ? { type: ShadingType.CLEAR, color: 'auto', fill: UI_SPEC_HEADER_FILL }
+        : undefined,
+      children: children.length ? children : [new Paragraph('')],
+    });
+  // DXA (1/1440 in) -> px at 96 dpi, minus the cell margins.
+  const contentWidthPx = Math.max(
+    40,
+    Math.floor(((widths[3] - 2 * CELL_MARGIN) / 1440) * 96),
+  );
+
+  const headerRow = new TableRow({
+    tableHeader: true,
+    children: UI_SPEC_COLUMNS.map((c, i) =>
+      cell(
+        [new Paragraph({ children: [run({ text: c, bold: true, color: 'FFFFFF' })] })],
+        i,
+        true,
+      ),
+    ),
+  });
+
+  const bodyRows: TableRow[] = [];
+  for (const r of rows) {
+    bodyRows.push(
+      new TableRow({
+        children: [
+          cell(lines(r.id, r.styles?.id), 0),
+          cell(lines(r.item, r.styles?.item), 1),
+          cell(lines(r.description, r.styles?.description), 2),
+          cell(
+            [
+              ...(r.content ? lines(r.content, r.styles?.content) : []),
+              ...(await images(r.images, contentWidthPx)),
+            ],
+            3,
+          ),
+          cell(
+            r.specs.map(
+              (s) =>
+                new Paragraph({
+                  children: s.key
+                    ? [
+                        run({ text: `- ${s.key}: `, bold: true }, s.style),
+                        run({ text: s.value }, s.style),
+                      ]
+                    : [run({ text: `- ${s.value}` }, s.style)],
+                }),
+            ),
+            4,
+          ),
+        ],
+      }),
+    );
+  }
+
+  if (node.attrs?.title) {
+    state.children.push(
+      new Paragraph({ children: [run({ text: node.attrs.title, bold: true })] }),
+    );
+  }
+  state.children.push(
+    new Table({
+      width: { size: TEXT_WIDTH, type: WidthType.DXA },
+      columnWidths: widths,
+      margins: { left: CELL_MARGIN, right: CELL_MARGIN },
+      rows: [headerRow, ...bodyRows],
+    }),
+  );
+  state.children.push(new Paragraph(''));
+};
+
 
 export type DocxImageResolver = OptionsAsync['getImageBuffer'];
 
@@ -93,15 +283,20 @@ const renderIntegrationCard: NodeSerializerAsync[string] = async (
   state.closeBlock(node);
 };
 
+// Heading numbers of the page being exported (set by pageNodeToDocxBuffer).
+let headingLabels = new Map<Node, string>();
+
 export const defaultAsyncNodes: NodeSerializerAsync = {
   text(state, node) {
     state.text(node.text ?? '');
   },
   async paragraph(state, node) {
     await state.renderInline(node);
-    state.closeBlock(node);
+    state.closeBlock(node, blockFormat(node));
   },
   async heading(state, node) {
+    const label = headingLabels.get(node);
+    if (label) state.text(`${label} `);
     await state.renderInline(node);
     const heading = [
       HeadingLevel.HEADING_1,
@@ -111,7 +306,7 @@ export const defaultAsyncNodes: NodeSerializerAsync = {
       HeadingLevel.HEADING_5,
       HeadingLevel.HEADING_6,
     ][(node.attrs.level ?? 1) - 1];
-    state.closeBlock(node, { heading });
+    state.closeBlock(node, { heading, ...blockFormat(node) });
   },
   async blockquote(state, node) {
     await state.renderContent(node, { style: 'IntenseQuote' });
@@ -131,7 +326,11 @@ export const defaultAsyncNodes: NodeSerializerAsync = {
     await state.renderList(node, 'bullets');
   },
   async orderedList(state, node) {
-    await state.renderList(node, 'numbered');
+    const style = node.attrs?.listStyle;
+    await state.renderList(
+      node,
+      style === 'paren' ? 'numberedParen' : style === 'legal' ? 'numberedLegal' : 'numbered',
+    );
   },
   async listItem(state, node) {
     await state.renderListItem(node);
@@ -149,6 +348,8 @@ export const defaultAsyncNodes: NodeSerializerAsync = {
   async table(state, node) {
     await state.table(node);
   },
+  uiSpec: renderUiSpec,
+  mindMap: renderMindMap,
   // Docmost stores LaTeX in attrs.text.
   mathInline(state, node) {
     state.math(node.attrs?.text ?? '', { inline: true });
@@ -278,7 +479,16 @@ export const defaultMarks: MarkSerializer = {
   // @tiptap/extension-color stores the color on the textStyle mark.
   textStyle(_state, _node, mark) {
     const color = toDocxColor(mark.attrs?.color);
-    return color ? { color } : {};
+    const out: Record<string, unknown> = color ? { color } : {};
+    // fontSize is stored as "16px"; docx sizes are half-points (px * 0.75 * 2).
+    const px = parseFloat(String(mark.attrs?.fontSize ?? ''));
+    if (px > 0) out.size = Math.round(px * 1.5);
+    const family = String(mark.attrs?.fontFamily ?? '')
+      .split(',')[0]
+      .replace(/['"]/g, '')
+      .trim();
+    if (family) out.font = family;
+    return out;
   },
   // Comments are editor-only; drop the annotation in the export.
   comment() {
@@ -290,21 +500,22 @@ export async function pageNodeToDocxBuffer(
   doc: Node,
   getImageBuffer: DocxImageResolver,
 ): Promise<Buffer> {
+  headingLabels = headingNumbers(doc);
   const serializer = new DocxSerializerAsync(defaultAsyncNodes, defaultMarks);
   const wordDoc = await serializer.serializeAsync(
     doc,
     { getImageBuffer },
     // docx's built-in heading styles are blue (#2E74B5 / #1F4D78). The editor
     // has no heading color, so override the default heading run colors to the
-    // normal text color. Sizes/italics mirror docx's own defaults so only the
-    // color changes.
+    // normal text color. Sizes step down from H1 to H6 and never drop below the
+    // 11pt body text, like the editor.
     () =>
       ({
         styles: {
           default: {
             document: { paragraph: { spacing: { after: 160 } } },
             heading1: {
-              run: { color: '000000', size: 32 },
+              run: { color: '000000', bold: true, size: 32 },
               paragraph: {
                 keepNext: true,
                 keepLines: true,
@@ -312,7 +523,7 @@ export async function pageNodeToDocxBuffer(
               },
             },
             heading2: {
-              run: { color: '000000', size: 26 },
+              run: { color: '000000', bold: true, size: 28 },
               paragraph: {
                 keepNext: true,
                 keepLines: true,
@@ -320,7 +531,7 @@ export async function pageNodeToDocxBuffer(
               },
             },
             heading3: {
-              run: { color: '000000', size: 24 },
+              run: { color: '000000', bold: true, size: 26 },
               paragraph: {
                 keepNext: true,
                 keepLines: true,
@@ -328,7 +539,7 @@ export async function pageNodeToDocxBuffer(
               },
             },
             heading4: {
-              run: { color: '000000', italics: true },
+              run: { color: '000000', bold: true, size: 24 },
               paragraph: {
                 keepNext: true,
                 keepLines: true,
@@ -336,7 +547,7 @@ export async function pageNodeToDocxBuffer(
               },
             },
             heading5: {
-              run: { color: '000000' },
+              run: { color: '000000', bold: true, size: 22 },
               paragraph: {
                 keepNext: true,
                 keepLines: true,
@@ -344,7 +555,7 @@ export async function pageNodeToDocxBuffer(
               },
             },
             heading6: {
-              run: { color: '000000' },
+              run: { color: '000000', bold: true, size: 22 },
               paragraph: {
                 keepNext: true,
                 keepLines: true,

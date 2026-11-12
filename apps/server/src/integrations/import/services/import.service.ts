@@ -1,3 +1,4 @@
+import { DocxBasicImportService } from './docx-basic-import.service';
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { PageRepo } from '@docmost/db/repos/page/page.repo';
 import { MultipartFile } from '@fastify/multipart';
@@ -167,23 +168,19 @@ export class ImportService {
     pageId: string,
     userId: string,
   ): Promise<any> {
-    let DocxImportModule: any;
+    let docxImportService: any;
     try {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
-      DocxImportModule = require('./../../../ee/document-import/docx-import.service');
-    } catch (err) {
-      this.logger.error(
-        'DOCX import requested but EE module not bundled in this build',
+      const DocxImportModule = require('./../../../ee/document-import/docx-import.service');
+      docxImportService = this.moduleRef.get(
+        DocxImportModule.DocxImportService,
+        { strict: false },
       );
-      throw new BadRequestException(
-        'This feature requires a valid enterprise license.',
-      );
+    } catch {
+      docxImportService = this.moduleRef.get(DocxBasicImportService, {
+        strict: false,
+      });
     }
-
-    const docxImportService = this.moduleRef.get(
-      DocxImportModule.DocxImportService,
-      { strict: false },
-    );
 
     const html = await docxImportService.convertDocxToHtml(
       fileBuffer,

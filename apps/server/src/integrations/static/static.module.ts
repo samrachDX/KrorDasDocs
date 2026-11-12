@@ -16,7 +16,7 @@ export class StaticModule implements OnModuleInit {
     const httpAdapter = this.httpAdapterHost.httpAdapter;
     const app = httpAdapter.getInstance();
 
-    const clientDistPath = join(
+    const clientDistPath = process.env.CLIENT_DIST_PATH || join(
       __dirname,
       '..',
       '..',

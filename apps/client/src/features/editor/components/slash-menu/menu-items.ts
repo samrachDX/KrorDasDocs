@@ -1,4 +1,6 @@
 import {
+  IconLayoutList,
+  IconDeviceMobile,
   IconBlockquote,
   IconCaretRightFilled,
   IconCheckbox,
@@ -411,6 +413,30 @@ const CommandGroups: SlashMenuGroupedItemsType = {
         editor.chain().focus().deleteRange(range).insertTabs().run(),
     },
     {
+      title: "Mind map",
+      description: "Brainstorm with a tree of topics (Tab: subtopic, Enter: next topic).",
+      searchTerms: ["mind", "map", "mindmap", "brainstorm", "tree", "xmind"],
+      icon: IconSitemap,
+      command: ({ editor, range }: CommandProps) =>
+        editor.chain().focus().deleteRange(range).insertMindMap().run(),
+    },
+    {
+      title: "UI Spec table",
+      description: "UI element spec: ID, item, content, format, position, color…",
+      searchTerms: ["ui", "spec", "specification", "element", "urd", "screen", "format", "position"],
+      icon: IconLayoutList,
+      command: ({ editor, range }: CommandProps) =>
+        editor.chain().focus().deleteRange(range).insertUiSpec().run(),
+    },
+    {
+      title: "UI Spec screen",
+      description: "Screen section: heading, purpose, spec table, reference image.",
+      searchTerms: ["ui", "spec", "screen", "page", "urd", "template"],
+      icon: IconDeviceMobile,
+      command: ({ editor, range }: CommandProps) =>
+        editor.chain().focus().deleteRange(range).insertUiSpecScreen().run(),
+    },
+    {
       title: "Callout",
       description: "Insert callout notice.",
       searchTerms: [
@@ -483,9 +509,9 @@ const CommandGroups: SlashMenuGroupedItemsType = {
           .run(),
     },
     {
-      title: "Draw.io (diagrams.net)",
-      description: "Insert and design Drawio diagrams",
-      searchTerms: ["drawio", "diagrams", "charts", "uml", "whiteboard"],
+      title: "KuFlow diagram",
+      description: "Flowcharts, UML and other diagrams (works offline)",
+      searchTerms: ["kuflow", "flowchart", "drawio", "diagrams", "charts", "uml", "whiteboard"],
       icon: IconDrawio,
       command: ({ editor, range }: CommandProps) =>
         editor.chain().focus().deleteRange(range).setDrawio().run(),

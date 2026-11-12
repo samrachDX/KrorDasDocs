@@ -11,7 +11,6 @@ import {
   IconCoin,
   IconLock,
   IconKey,
-  IconWorld,
   IconSparkles,
   IconPlug,
   IconHistory,
@@ -111,7 +110,6 @@ const groupedData: DataGroup[] = [
         path: "/settings/spaces",
         role: "admin",
       },
-      { label: "Public sharing", icon: IconWorld, path: "/settings/sharing" },
       {
         label: "Verified pages",
         icon: IconShieldCheck,

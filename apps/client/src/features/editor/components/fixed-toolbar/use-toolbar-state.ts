@@ -40,7 +40,9 @@ export function useToolbarState(editor: Editor | null): ToolbarState | null {
         isSubscript: ctx.editor.isActive("subscript"),
         isSuperscript: ctx.editor.isActive("superscript"),
         isBulletList: ctx.editor.isActive("bulletList"),
-        isOrderedList: ctx.editor.isActive("orderedList"),
+        isOrderedList:
+          ctx.editor.isActive("orderedList") ||
+          (ctx.editor.isActive("heading") && ctx.editor.getAttributes("heading").numbered === true),
         isTaskList: ctx.editor.isActive("taskList"),
         canUndo: safeCan(ctx.editor, "undo"),
         canRedo: safeCan(ctx.editor, "redo"),

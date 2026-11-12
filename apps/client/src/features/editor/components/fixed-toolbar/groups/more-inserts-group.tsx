@@ -183,7 +183,7 @@ export const MoreInsertsGroup: FC<Props> = ({ editor, templateMode }) => {
             leftSection={<IconDrawio size={16} />}
             onClick={() => editor.chain().focus().setDrawio().run()}
           >
-            Draw.io
+            KuFlow
           </Menu.Item>
         )}
         {!templateMode && (

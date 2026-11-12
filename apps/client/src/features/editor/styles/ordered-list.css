@@ -32,3 +32,41 @@ ul ol {
   margin-top: 0.1rem;
   margin-bottom: 0.1rem;
 }
+
+/* Multilevel list styles (toolbar list library). */
+@counter-style kd-paren-decimal {
+  system: extends decimal;
+  suffix: ") ";
+}
+@counter-style kd-paren-alpha {
+  system: extends lower-alpha;
+  suffix: ") ";
+}
+@counter-style kd-paren-roman {
+  system: extends lower-roman;
+  suffix: ") ";
+}
+ol[data-list-style="paren"],
+ol[data-list-style="paren"] ol ol ol {
+  list-style-type: kd-paren-decimal;
+}
+ol[data-list-style="paren"] ol,
+ol[data-list-style="paren"] ol ol ol ol {
+  list-style-type: kd-paren-alpha;
+}
+ol[data-list-style="paren"] ol ol,
+ol[data-list-style="paren"] ol ol ol ol ol {
+  list-style-type: kd-paren-roman;
+}
+ol[data-list-style="legal"] > li::marker,
+ol[data-list-style="legal"] ol > li::marker {
+  content: counters(list-item, ".") ".  ";
+}
+ol[data-list-style="legal"] ol {
+  padding-left: 2.2em;
+}
+
+/* Heading numbering (1, 1.1, 1.1.1). */
+.ProseMirror [data-heading-number]::before {
+  content: attr(data-heading-number) "\00a0\00a0";
+}

@@ -22,6 +22,16 @@ const numbered = Array(3)
     ...basicIndentStyle((level + 1) / 2),
   }));
 
+const numberedParen = numbered.map((l) => ({ ...l, text: `%${l.level + 1})` }));
+
+// 1. 1.1. 1.1.1. — every level decimal, joined with the levels above it.
+const numberedLegal = numbered.map((l) => ({
+  ...l,
+  format: LevelFormat.DECIMAL,
+  text: `${Array.from({ length: l.level + 1 }, (_, i) => `%${i + 1}`).join('.')}.`,
+  ...basicIndentStyle((l.level + 1) / 2 + l.level * 0.1),
+}));
+
 const bullets = Array(3)
   .fill(['●', '○', '■'])
   .flat()
@@ -34,6 +44,8 @@ const bullets = Array(3)
 
 const styles = {
   numbered,
+  numberedParen,
+  numberedLegal,
   bullets,
 };
 

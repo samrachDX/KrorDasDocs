@@ -1,0 +1,26 @@
+.tile {
+  display: block;
+  height: 64px;
+  padding: 8px 6px !important;
+  border: 1px solid light-dark(var(--mantine-color-gray-4), var(--mantine-color-dark-4));
+  border-radius: 4px;
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.tile[data-active] {
+  border: 2px solid var(--mantine-color-blue-6);
+}
+
+.line {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.line i {
+  flex: 1;
+  height: 1px;
+  background: light-dark(var(--mantine-color-gray-5), var(--mantine-color-dark-3));
+}

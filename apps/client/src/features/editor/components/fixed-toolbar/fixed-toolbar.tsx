@@ -5,9 +5,11 @@ import { pageEditorAtom } from "@/features/editor/atoms/editor-atoms";
 import { useToolbarState } from "./use-toolbar-state";
 import { BlockTypeGroup } from "./groups/block-type-group";
 import { InlineMarksGroup } from "./groups/inline-marks-group";
+import { FontSelector } from "@/features/editor/components/bubble-menu/font-selector";
 import { ColorGroup } from "./groups/color-group";
 import { ListsGroup } from "./groups/lists-group";
 import { AlignmentGroup } from "./groups/alignment-group";
+import { ParagraphGroup } from "./groups/paragraph-group";
 import { MediaGroup } from "./groups/media-group";
 import { QuickInsertsGroup } from "./groups/quick-inserts-group";
 import { MoreInsertsGroup } from "./groups/more-inserts-group";
@@ -55,11 +57,13 @@ export const FixedToolbar: FC<FixedToolbarProps> = ({
               <div className={classes.divider} />
               <InlineMarksGroup editor={editor} state={state} />
               <div className={classes.divider} />
+              <FontSelector editor={editor} />
               <ColorGroup editor={editor} />
               <div className={classes.divider} />
               <ListsGroup editor={editor} state={state} />
               <div className={classes.divider} />
               <AlignmentGroup editor={editor} />
+              <ParagraphGroup editor={editor} />
               <div className={classes.divider} />
               <MediaGroup editor={editor} templateMode={templateMode} />
               <div className={classes.divider} />

@@ -63,3 +63,7 @@
     var(--mantine-color-dark-3)
   );
 }
+
+.fontItem:hover {
+  background: light-dark(var(--mantine-color-gray-1), var(--mantine-color-dark-5));
+}
