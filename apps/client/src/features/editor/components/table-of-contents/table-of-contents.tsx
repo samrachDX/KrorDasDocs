@@ -1,10 +1,12 @@
 import { NodePos, useEditor } from "@tiptap/react";
 import { TextSelection } from "@tiptap/pm/state";
+import type { Node as PMNode } from "@tiptap/pm/model";
 import React, { FC, useEffect, useRef, useState } from "react";
 import classes from "./table-of-contents.module.css";
 import clsx from "clsx";
 import { Box, Text, Title } from "@mantine/core";
 import { useTranslation } from "react-i18next";
+import { headingNumbers } from "@docmost/editor-ext";
 
 type TableOfContentsProps = {
   editor: ReturnType<typeof useEditor>;
@@ -18,12 +20,16 @@ export type HeadingLink = {
   position: number;
 };
 
-export const recalculateLinks = (nodePos: NodePos[]) => {
+export const recalculateLinks = (nodePos: NodePos[], doc?: PMNode) => {
   const nodes: HTMLElement[] = [];
+  // Heading numbers (1., 1.1) shown on the page are shown in the outline too.
+  const numbers = doc ? headingNumbers(doc) : new Map<PMNode, string>();
 
   const links: HeadingLink[] = Array.from(nodePos).reduce<HeadingLink[]>(
     (acc, item) => {
-      const label = item.node.textContent;
+      const text = item.node.textContent;
+      const number = numbers.get(item.node);
+      const label = number && text.length ? `${number} ${text}` : text;
       const level = Number(item.node.attrs.level);
       if (label.length && level <= 6) {
         acc.push({
@@ -77,7 +83,10 @@ export const TableOfContents: FC<TableOfContentsProps> = (props) => {
   const handleUpdate = () => {
     if (!props.editor || props.editor.isDestroyed) return;
 
-    const result = recalculateLinks(props.editor.$nodes("heading"));
+    const result = recalculateLinks(
+      props.editor.$nodes("heading"),
+      props.editor.state.doc,
+    );
 
     setLinks(result.links);
     setHeadingDOMNodes(result.nodes);

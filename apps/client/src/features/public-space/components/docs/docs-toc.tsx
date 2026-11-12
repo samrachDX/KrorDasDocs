@@ -26,7 +26,7 @@ export default function DocsToc() {
 
   const handleUpdate = useCallback(() => {
     if (!editor || editor.isDestroyed) return;
-    const result = recalculateLinks(editor.$nodes("heading"));
+    const result = recalculateLinks(editor.$nodes("heading"), editor.state.doc);
     setLinks(result.links);
     setHeadingDOMNodes(result.nodes);
   }, [editor]);
