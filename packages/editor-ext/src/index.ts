@@ -32,6 +32,8 @@ export * from "./lib/integration-link";
 export * from "./lib/columns";
 export * from "./lib/status";
 export * from "./lib/ui-spec";
+export * from "./lib/mind-map";
+export * from "./lib/line-height";
 export * from "./lib/tabs";
 export * from "./lib/pdf";
 export * from "./lib/page-break";

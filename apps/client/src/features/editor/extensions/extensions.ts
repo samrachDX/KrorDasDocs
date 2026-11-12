@@ -63,6 +63,8 @@ import {
   Column,
   Status,
   UiSpec,
+  MindMap,
+  BlockLineHeight,
   TransclusionSource,
   TransclusionReference,
   TableView,
@@ -94,6 +96,8 @@ import ImageView from "@/features/editor/components/image/image-view.tsx";
 import CalloutView from "@/features/editor/components/callout/callout-view.tsx";
 import StatusView from "@/features/editor/components/status/status-view.tsx";
 import UiSpecView from "@/features/editor/components/ui-spec/ui-spec-view.tsx";
+import MindMapView from "@/features/editor/components/mind-map/mind-map-view.tsx";
+import { FormatPainter } from "@/features/editor/extensions/format-painter";
 import VideoView from "@/features/editor/components/video/video-view.tsx";
 import AudioView from "@/features/editor/components/audio/audio-view.tsx";
 import AttachmentView from "@/features/editor/components/attachment/attachment-view.tsx";
@@ -417,6 +421,11 @@ export const mainExtensions = [
   Status.configure({
     view: StatusView,
   }),
+  MindMap.configure({
+    view: MindMapView,
+  }),
+  BlockLineHeight,
+  FormatPainter,
   UiSpec.configure({
     view: UiSpecView,
   }),

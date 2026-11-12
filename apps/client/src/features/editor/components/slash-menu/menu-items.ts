@@ -413,6 +413,14 @@ const CommandGroups: SlashMenuGroupedItemsType = {
         editor.chain().focus().deleteRange(range).insertTabs().run(),
     },
     {
+      title: "Mind map",
+      description: "Brainstorm with a tree of topics (Tab: subtopic, Enter: next topic).",
+      searchTerms: ["mind", "map", "mindmap", "brainstorm", "tree", "xmind"],
+      icon: IconSitemap,
+      command: ({ editor, range }: CommandProps) =>
+        editor.chain().focus().deleteRange(range).insertMindMap().run(),
+    },
+    {
       title: "UI Spec table",
       description: "UI element spec: ID, item, content, format, position, color…",
       searchTerms: ["ui", "spec", "specification", "element", "urd", "screen", "format", "position"],

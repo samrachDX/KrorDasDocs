@@ -24,6 +24,7 @@ import {
 } from "@/ee/page-verification";
 import { useTranslation } from "react-i18next";
 import { IContributor } from "@/features/page/types/page.types.ts";
+import { WordCount } from "@/features/editor/components/word-count/word-count";
 import { FixedToolbar } from "@/features/editor/components/fixed-toolbar/fixed-toolbar";
 import { PageEditMode } from "@/features/user/types/user.types.ts";
 import { useAsideTriggerProps } from "@/hooks/use-toggle-aside.tsx";
@@ -132,6 +133,7 @@ export function FullEditor({
         contributors={contributors}
         readOnly={!editable}
       />
+      {editable && isEditMode && <WordCount />}
       <MemoizedPageEditor
         pageId={pageId}
         editable={editable}

@@ -16,6 +16,7 @@ import {
   UI_SPEC_COLUMNS,
 } from '../ui-spec/ui-spec-utils';
 import { Node } from 'prosemirror-model';
+import { MindMapTopic, normalizeMindMap } from '../mind-map/mind-map-utils';
 import { imageDimensionsFromData } from 'image-dimensions';
 import { sanitizeIntegrationUrl } from '../integration-link/integration-link';
 import {
@@ -30,6 +31,38 @@ import { CELL_MARGIN, TEXT_WIDTH, writeDocx } from './utils';
 // ID | Items | Description | Displayed Content / Context | Specification
 const UI_SPEC_COL_RATIOS = [0.08, 0.14, 0.24, 0.2, 0.34];
 const UI_SPEC_HEADER_FILL = '1F3864';
+
+// Indent (0-8 steps of 2em, about 0.33in each) and line spacing (multiple of
+// single, docx counts 240 per line) from the paragraph/heading attributes.
+function blockFormat(node: Node): Record<string, any> {
+  const out: Record<string, any> = {};
+  const indent = Number(node.attrs?.indent) || 0;
+  if (indent > 0) out.indent = { left: indent * 480 };
+  const lh = parseFloat(String(node.attrs?.lineHeight ?? ''));
+  if (lh > 0) out.spacing = { line: Math.round(lh * 240) };
+  return out;
+}
+
+// Mind map -> bold central topic and an indented outline of its topics.
+const renderMindMap: NodeSerializerAsync[string] = (state, node) => {
+  const map = normalizeMindMap(node.attrs?.data);
+  state.children.push(
+    new Paragraph({ children: [new TextRun({ text: map.text, bold: true })] }),
+  );
+  const walk = (topics: MindMapTopic[], level: number) => {
+    for (const t of topics) {
+      state.children.push(
+        new Paragraph({
+          indent: { left: 360 * (level + 1), hanging: 240 },
+          children: [new TextRun(`• ${t.text}`)],
+        }),
+      );
+      walk(t.children, level + 1);
+    }
+  };
+  walk(map.children, 0);
+  state.children.push(new Paragraph(''));
+};
 
 const renderUiSpec: NodeSerializerAsync[string] = async (state, node) => {
   const rows = normalizeUiSpecRows(node.attrs?.rows);
@@ -255,7 +288,7 @@ export const defaultAsyncNodes: NodeSerializerAsync = {
   },
   async paragraph(state, node) {
     await state.renderInline(node);
-    state.closeBlock(node);
+    state.closeBlock(node, blockFormat(node));
   },
   async heading(state, node) {
     await state.renderInline(node);
@@ -267,7 +300,7 @@ export const defaultAsyncNodes: NodeSerializerAsync = {
       HeadingLevel.HEADING_5,
       HeadingLevel.HEADING_6,
     ][(node.attrs.level ?? 1) - 1];
-    state.closeBlock(node, { heading });
+    state.closeBlock(node, { heading, ...blockFormat(node) });
   },
   async blockquote(state, node) {
     await state.renderContent(node, { style: 'IntenseQuote' });
@@ -306,6 +339,7 @@ export const defaultAsyncNodes: NodeSerializerAsync = {
     await state.table(node);
   },
   uiSpec: renderUiSpec,
+  mindMap: renderMindMap,
   // Docmost stores LaTeX in attrs.text.
   mathInline(state, node) {
     state.math(node.attrs?.text ?? '', { inline: true });
